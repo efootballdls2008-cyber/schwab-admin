@@ -210,7 +210,7 @@ export default function UserDetail() {
             {holdings.length === 0 ? (
               <p className="px-5 py-8 text-xs text-gray-500">No holdings yet.</p>
             ) : (
-              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="divide-y divide-white/5">
                 {holdings.map(h => {
                   const value = h.quantity * h.currentPrice
                   const pnl = (h.currentPrice - h.avgBuyPrice) * h.quantity
@@ -241,7 +241,7 @@ export default function UserDetail() {
                 <h3 className="text-sm font-bold text-white">Deposits & Withdrawals</h3>
               </div>
               {deposits.length === 0 ? <p className="px-5 py-6 text-xs text-gray-500">No transactions.</p> : (
-                <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="divide-y divide-white/5">
                   {deposits.map(d => (
                     <div key={d.id} className="flex items-center justify-between px-5 py-3">
                       <div>
@@ -264,7 +264,7 @@ export default function UserDetail() {
                 <h3 className="text-sm font-bold text-white">Buy Orders</h3>
               </div>
               {purchases.length === 0 ? <p className="px-5 py-6 text-xs text-gray-500">No buy orders.</p> : (
-                <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="divide-y divide-white/5">
                   {purchases.map(p => (
                     <div key={p.id} className="flex items-center justify-between px-5 py-3">
                       <div>

@@ -119,7 +119,7 @@ export default function Dashboard() {
                 <h3 className="text-sm font-bold text-white">Pending Deposits</h3>
                 <button onClick={() => navigate('/admin/deposits')} className="text-xs font-semibold" style={{ color: '#c9a84c' }}>View All →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="divide-y divide-white/5">
                 {deposits.filter(d => d.type === 'deposit' && d.status === 'pending').slice(0, 4).map(d => {
                   const user = users.find(u => u.id === d.userId)
                   return (
@@ -144,7 +144,7 @@ export default function Dashboard() {
                 <h3 className="text-sm font-bold text-white">Pending Withdrawals</h3>
                 <button onClick={() => navigate('/admin/withdrawals')} className="text-xs font-semibold" style={{ color: '#c9a84c' }}>View All →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="divide-y divide-white/5">
                 {deposits.filter(d => d.type === 'withdraw' && d.status === 'pending').slice(0, 4).map(d => {
                   const user = users.find(u => u.id === d.userId)
                   return (
@@ -169,7 +169,7 @@ export default function Dashboard() {
                 <h3 className="text-sm font-bold text-white">Pending Buy Orders</h3>
                 <button onClick={() => navigate('/admin/orders')} className="text-xs font-semibold" style={{ color: '#c9a84c' }}>View All →</button>
               </div>
-              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="divide-y divide-white/5">
                 {purchases.filter(p => p.status === 'pending').slice(0, 4).map(p => {
                   const user = users.find(u => u.id === p.userId)
                   return (
@@ -197,7 +197,7 @@ export default function Dashboard() {
             {actions.length === 0 ? (
               <p className="px-5 py-6 text-xs text-gray-500">No admin actions yet. Approve or reject requests to see activity here.</p>
             ) : (
-              <div className="divide-y" style={{ divideColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="divide-y divide-white/5">
                 {actions.map(a => (
                   <div key={a.id} className="flex items-center gap-4 px-5 py-3">
                     <ActionBadge action={a.action} />

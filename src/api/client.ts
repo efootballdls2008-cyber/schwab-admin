@@ -13,7 +13,7 @@ function getAuthHeaders(): HeadersInit {
 async function unwrap<T>(res: Response, path: string): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string }
-    throw new Error(body.message ?? `${res.method ?? 'REQUEST'} ${path} failed: ${res.status}`)
+    throw new Error(body.message ?? `REQUEST ${path} failed: ${res.status}`)
   }
   const json = await res.json() as { success: boolean; data: T } | T
   // If the server wraps in { success, data }, return data; otherwise return as-is.
