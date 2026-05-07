@@ -23,4 +23,9 @@ export const API = {
   wallet: (id: number) => `/wallets/${id}`,
   profitOverview: '/profitOverview',
   profitOverviewItem: (id: number) => `/profitOverview/${id}`,
+  // Admin notifications
+  adminNotifications: '/adminNotifications',
+  adminNotification: (id: number) => `/adminNotifications/${id}`,
+  adminNotificationsUnreadCount: '/adminNotifications/unread-count',
+  adminNotificationsMarkAllRead: '/adminNotifications/mark-all-read',
 }

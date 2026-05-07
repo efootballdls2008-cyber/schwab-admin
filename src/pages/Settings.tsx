@@ -333,7 +333,56 @@ export default function Settings() {
             <CardTitle icon="fas fa-user-plus" iconColor="#34d399">User Defaults</CardTitle>
             <div className="grid grid-cols-2 gap-4">
               <NumField label="Starting Balance ($)" value={settings.defaultStartingBalance} onChange={v => update('defaultStartingBalance', v)} min={0} hint="Credited on signup" />
-              <NumField label="Welcome Bonus ($)" value={settings.welcomeBonusAmount} onChange={v => update('welcomeBonusAmount', v)} min={0} hint="When bonus is enabled" />
+              {/* Welcome Bonus — read-only when bonus toggle is off */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5 flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+                  Welcome Bonus ($)
+                  {!settings.welcomeBonusEnabled && (
+                    <span
+                      className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium"
+                      style={{ background: 'rgba(156,163,175,0.1)', color: '#6b7280', border: '1px solid rgba(156,163,175,0.15)' }}
+                    >
+                      <i className="fas fa-lock text-xs" />
+                      Disabled
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={settings.welcomeBonusAmount}
+                    min={0}
+                    onChange={e => settings.welcomeBonusEnabled && update('welcomeBonusAmount', parseFloat(e.target.value))}
+                    readOnly={!settings.welcomeBonusEnabled}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      background: settings.welcomeBonusEnabled
+                        ? 'rgba(255,255,255,0.05)'
+                        : 'rgba(255,255,255,0.02)',
+                      border: settings.welcomeBonusEnabled
+                        ? '1px solid rgba(255,255,255,0.1)'
+                        : '1px solid rgba(255,255,255,0.05)',
+                      color: settings.welcomeBonusEnabled ? '#ffffff' : '#4b5563',
+                      cursor: settings.welcomeBonusEnabled ? 'text' : 'not-allowed',
+                    }}
+                  />
+                  {!settings.welcomeBonusEnabled && (
+                    <div className="absolute inset-0 rounded-xl flex items-center justify-end pr-3 pointer-events-none">
+                      <i className="fas fa-lock text-xs" style={{ color: '#374151' }} />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#6b7280' }}>
+                  {settings.welcomeBonusEnabled
+                    ? 'Credited on first login'
+                    : (
+                      <span>
+                        Enable <span className="font-medium" style={{ color: '#c9a84c' }}>Welcome Bonus</span> in Features to edit
+                      </span>
+                    )
+                  }
+                </p>
+              </div>
             </div>
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
@@ -352,7 +401,7 @@ export default function Settings() {
           {/* Bot Defaults */}
           <Card className="lg:col-span-2">
             <CardTitle icon="fas fa-robot" iconColor="#818cf8">Bot Trading Defaults</CardTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <SelectField
                 label="Default Strategy"
                 value={settings.botDefaultStrategy}
@@ -364,6 +413,20 @@ export default function Settings() {
                 value={settings.botDefaultRiskLevel}
                 onChange={v => update('botDefaultRiskLevel', v)}
                 options={['Conservative', 'Moderate', 'Aggressive']}
+              />
+              <SelectField
+                label="Default Timeframe"
+                value={settings.botDefaultTimeframe}
+                onChange={v => update('botDefaultTimeframe', v)}
+                options={['1m', '5m', '15m', '30m', '1h', '4h', '1d']}
+                hint="Candle interval used by the bot"
+              />
+              <NumField
+                label="Confidence Threshold (%)"
+                value={settings.botConfidenceThreshold}
+                onChange={v => update('botConfidenceThreshold', v)}
+                min={0} max={100} step={0.5}
+                hint="Min signal confidence to open a position"
               />
               <NumField
                 label="Max Open Trades (per user)"

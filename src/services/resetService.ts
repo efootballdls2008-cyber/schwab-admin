@@ -4,8 +4,11 @@ import { API } from '../api/endpoints'
 interface Identifiable { id: number | string }
 interface UserRecord { id: number; role: string }
 
-/** Delete all records from a collection */
-async function clearCollection(endpoint: string, itemEndpoint: (id: number | string) => string): Promise<void> {
+/** Delete all records from a collection by fetching then deleting each one. */
+async function clearCollection(
+  endpoint: string,
+  itemEndpoint: (id: number | string) => string,
+): Promise<void> {
   const items = await get<Identifiable[]>(endpoint)
   await Promise.all(items.map((item) => del(itemEndpoint(item.id))))
 }
@@ -19,16 +22,17 @@ export async function resetUserData(userId: number): Promise<void> {
   // Zero balance
   await patch(API.user(userId), { balance: 0 })
 
-  // Fetch and delete user-scoped records
-  const [deposits, purchases, holdings, botTrades, tradeHistory, notifications, profitOverview] = await Promise.all([
-    get<Identifiable[]>(`${API.deposits}?userId=${userId}`),
-    get<Identifiable[]>(`${API.purchases}?userId=${userId}`),
-    get<Identifiable[]>(`${API.holdings}?userId=${userId}`),
-    get<Identifiable[]>(`${API.botTrades}?userId=${userId}`),
-    get<Identifiable[]>(`${API.tradeHistory}?userId=${userId}`),
-    get<Identifiable[]>(`${API.notifications}?userId=${userId}`),
-    get<Identifiable[]>(`${API.profitOverview}?userId=${userId}`),
-  ])
+  // Fetch and delete user-scoped records in parallel
+  const [deposits, purchases, holdings, botTrades, tradeHistory, notifications, profitOverview] =
+    await Promise.all([
+      get<Identifiable[]>(`${API.deposits}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.purchases}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.holdings}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.botTrades}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.tradeHistory}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.notifications}?userId=${userId}`).catch(() => [] as Identifiable[]),
+      get<Identifiable[]>(`${API.profitOverview}?userId=${userId}`).catch(() => [] as Identifiable[]),
+    ])
 
   await Promise.all([
     ...deposits.map((r) => del(API.deposit(r.id as number))),
@@ -44,14 +48,12 @@ export async function resetUserData(userId: number): Promise<void> {
 /**
  * Reset ALL platform data:
  * - Zero all user balances
- * - Clear deposits, purchases, holdings, botTrades, tradeHistory, notifications, profitOverview, adminActions
+ * - Clear all transactional collections
  */
 export async function resetAllData(): Promise<void> {
-  // Zero all user balances
   const users = await get<UserRecord[]>(API.users)
   await Promise.all(users.map((u) => patch(API.user(u.id), { balance: 0 })))
 
-  // Clear all transactional collections
   await Promise.all([
     clearCollection(API.deposits, API.deposit),
     clearCollection(API.purchases, API.purchase),
@@ -78,7 +80,7 @@ export async function deleteAllUsers(): Promise<{ deleted: number }> {
   // Then delete the user accounts themselves
   await Promise.all(memberUsers.map((u) => del(API.user(u.id))))
 
-  // Also clear admin action logs
+  // Clear admin action logs
   await clearCollection(API.adminActions, API.adminAction)
 
   return { deleted: memberUsers.length }

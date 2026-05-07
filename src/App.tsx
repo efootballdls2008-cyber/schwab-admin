@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAdmin } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import { ReactNode } from 'react'
 
 import Login from './pages/Login'
@@ -11,6 +12,7 @@ import Withdrawals from './pages/Withdrawals'
 import Orders from './pages/Orders'
 import PlatformAccounts from './pages/PlatformAccounts'
 import Settings from './pages/Settings'
+import Notifications from './pages/Notifications'
 
 function Guard({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAdmin()
@@ -29,6 +31,7 @@ function AppRoutes() {
       <Route path="/admin/orders" element={<Guard><Orders /></Guard>} />
       <Route path="/admin/accounts" element={<Guard><PlatformAccounts /></Guard>} />
       <Route path="/admin/settings" element={<Guard><Settings /></Guard>} />
+      <Route path="/admin/notifications" element={<Guard><Notifications /></Guard>} />
       <Route path="*" element={<Navigate to="/admin/login" replace />} />
     </Routes>
   )
@@ -37,7 +40,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <NotificationProvider>
+        <AppRoutes />
+      </NotificationProvider>
     </AuthProvider>
   )
 }

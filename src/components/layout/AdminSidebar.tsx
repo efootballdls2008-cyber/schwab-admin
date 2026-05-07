@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAdmin } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 
 interface NavItem {
   key: string
@@ -19,15 +20,17 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ open, onClose, pendingDeposits, pendingWithdrawals, pendingOrders }: AdminSidebarProps) {
   const { admin, logout } = useAdmin()
+  const { unreadCount } = useNotifications()
 
   const navItems: NavItem[] = [
-    { key: 'dashboard',   label: 'Dashboard',        icon: 'fas fa-th-large',      to: '/admin/dashboard' },
-    { key: 'users',       label: 'Users',             icon: 'fas fa-users',         to: '/admin/users' },
-    { key: 'deposits',    label: 'Deposits',          icon: 'fas fa-arrow-down',    to: '/admin/deposits',    badge: pendingDeposits },
-    { key: 'withdrawals', label: 'Withdrawals',       icon: 'fas fa-arrow-up',      to: '/admin/withdrawals', badge: pendingWithdrawals },
-    { key: 'orders',      label: 'Buy Orders',        icon: 'fas fa-shopping-cart', to: '/admin/orders',      badge: pendingOrders },
-    { key: 'accounts',    label: 'Platform Accounts', icon: 'fas fa-university',    to: '/admin/accounts' },
-    { key: 'settings',    label: 'Settings',          icon: 'fas fa-cog',           to: '/admin/settings' },
+    { key: 'dashboard',      label: 'Dashboard',        icon: 'fas fa-th-large',      to: '/admin/dashboard' },
+    { key: 'users',          label: 'Users',             icon: 'fas fa-users',         to: '/admin/users' },
+    { key: 'deposits',       label: 'Deposits',          icon: 'fas fa-arrow-down',    to: '/admin/deposits',       badge: pendingDeposits },
+    { key: 'withdrawals',    label: 'Withdrawals',       icon: 'fas fa-arrow-up',      to: '/admin/withdrawals',    badge: pendingWithdrawals },
+    { key: 'orders',         label: 'Buy Orders',        icon: 'fas fa-shopping-cart', to: '/admin/orders',         badge: pendingOrders },
+    { key: 'accounts',       label: 'Platform Accounts', icon: 'fas fa-university',    to: '/admin/accounts' },
+    { key: 'notifications',  label: 'Notifications',     icon: 'fas fa-bell',          to: '/admin/notifications',  badge: unreadCount },
+    { key: 'settings',       label: 'Settings',          icon: 'fas fa-cog',           to: '/admin/settings' },
   ]
 
   const initials = admin ? `${admin.firstName[0]}${admin.lastName[0]}`.toUpperCase() : 'A'

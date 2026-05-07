@@ -23,11 +23,19 @@ export async function getDefaultPlatformAccount(): Promise<PlatformAccount | nul
   return accounts.find(a => a.isDefault && a.status === 'active') ?? null
 }
 
+/**
+ * GET /platformSettings returns a single object (not an array).
+ */
 export async function getPlatformSettings(): Promise<PlatformSettings> {
-  const settings = await get<PlatformSettings[]>(API.platformSettings)
-  return settings[0]
+  return get<PlatformSettings>(API.platformSettings)
 }
 
-export async function updatePlatformSettings(id: number, data: Partial<PlatformSettings>): Promise<PlatformSettings> {
-  return patch<PlatformSettings>(API.platformSetting(id), data)
+/**
+ * PATCH /platformSettings — no id needed, backend updates the single row.
+ * Strip id and updatedAt before sending so they don't cause SQL errors.
+ */
+export async function updatePlatformSettings(_id: number, data: Partial<PlatformSettings>): Promise<PlatformSettings> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _stripId, ...payload } = data as PlatformSettings & { id?: number }
+  return patch<PlatformSettings>(API.platformSettings, payload)
 }

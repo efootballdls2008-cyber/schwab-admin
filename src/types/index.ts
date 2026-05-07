@@ -108,6 +108,8 @@ export interface PlatformSettings {
   // Bot defaults
   botDefaultStrategy: string
   botDefaultRiskLevel: string
+  botDefaultTimeframe: string
+  botConfidenceThreshold: number
   botMaxOpenTrades: number
   // Security
   maxLoginAttempts: number
@@ -131,4 +133,15 @@ export interface AdminAction {
   targetId: string
   details: string
   timestamp: string
+}
+
+export interface AdminNotification {
+  id: number
+  title: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error' | 'user' | 'deposit' | 'withdrawal' | 'order' | 'login'
+  isRead: boolean
+  relatedId: string | null
+  relatedType: string | null
+  createdAt: string
 }
