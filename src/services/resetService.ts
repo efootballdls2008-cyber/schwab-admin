@@ -54,14 +54,14 @@ export async function resetAllData(): Promise<void> {
 
   // Bulk delete every transactional table — single DELETE per collection
   await Promise.all([
-    del(API.deposits),
-    del(API.purchases),
-    del(API.holdings),
-    del(API.botTrades),
-    del(API.tradeHistory),
-    del(API.notifications),
-    del(API.adminActions),
-    del(API.profitOverview),
+    del(API.deposits,      { confirm: true }),
+    del(API.purchases,     { confirm: true }),
+    del(API.holdings,      { confirm: true }),
+    del(API.botTrades,     { confirm: true }),
+    del(API.tradeHistory,  { confirm: true }),
+    del(API.notifications, { confirm: true }),
+    del(API.adminActions,  { confirm: true }),
+    del(API.profitOverview, { confirm: true }),
   ])
 }
 
