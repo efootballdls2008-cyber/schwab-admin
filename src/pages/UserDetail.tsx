@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import AdminLayout from '../components/layout/AdminLayout'
 import { getUserById, adjustBalance, suspendUser, activateUser } from '../services/userService'
 import { getDepositsByUser } from '../services/depositService'
+import { getUserActiveBotTrades, updateBotTradeProfit, closeBotTrade, AdminBotTrade } from '../services/botTradeService'
 import { get } from '../api/client'
-import type { AdminUser, Deposit, Holding, Purchase } from '../types'
+import type { AdminUser, Deposit, Holding, Purchase, BotSettings } from '../types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 
@@ -27,12 +28,14 @@ export default function UserDetail() {
   const [deposits, setDeposits] = useState<Deposit[]>([])
   const [holdings, setHoldings] = useState<Holding[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [botTrades, setBotTrades] = useState<AdminBotTrade[]>([])
+  const [botSettings, setBotSettings] = useState<BotSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [adjustAmount, setAdjustAmount] = useState('')
   const [adjustNote, setAdjustNote] = useState('')
   const [adjustLoading, setAdjustLoading] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
-  const [activeTab, setActiveTab] = useState<'info' | 'holdings' | 'transactions'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'holdings' | 'transactions' | 'bot-trading'>('info')
 
   const showToast = (msg: string, type: 'success' | 'error') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
 
@@ -40,16 +43,20 @@ export default function UserDetail() {
     if (!userId) return
     setLoading(true)
     try {
-      const [u, d, h, p] = await Promise.all([
+      const [u, d, h, p, bt, bs] = await Promise.all([
         getUserById(userId),
         getDepositsByUser(userId),
         get<Holding[]>(`/holdings?userId=${userId}`),
         get<Purchase[]>(`/purchases?userId=${userId}`),
+        getUserActiveBotTrades(userId),
+        get<BotSettings>(`/botSettings/${userId}`).catch(() => null),
       ])
       setUser(u)
       setDeposits(d)
       setHoldings(h)
       setPurchases(p)
+      setBotTrades(bt)
+      setBotSettings(bs)
     } catch { showToast('Failed to load user', 'error') }
     finally { setLoading(false) }
   }, [userId])
@@ -80,6 +87,22 @@ export default function UserDetail() {
       else { await suspendUser(user.id); showToast('User suspended', 'success') }
       await load()
     } catch { showToast('Failed', 'error') }
+  }
+
+  async function handleUpdateBotProfit(tradeId: number, newProfit: number, newDuration: number) {
+    try {
+      await updateBotTradeProfit(tradeId, newProfit, newDuration)
+      showToast('Bot trade updated', 'success')
+      await load()
+    } catch { showToast('Failed to update bot trade', 'error') }
+  }
+
+  async function handleCloseBotTrade(tradeId: number) {
+    try {
+      await closeBotTrade(tradeId)
+      showToast('Bot trade closed', 'success')
+      await load()
+    } catch { showToast('Failed to close bot trade', 'error') }
   }
 
   if (loading) return (
@@ -155,9 +178,12 @@ export default function UserDetail() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          {(['info', 'holdings', 'transactions'] as const).map(t => (
+          {(['info', 'holdings', 'transactions', 'bot-trading'] as const).map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className="px-4 py-2.5 text-sm font-medium capitalize relative" style={{ color: activeTab === t ? '#fff' : '#6b7280' }}>
-              {t === 'holdings' ? `Holdings (${holdings.length})` : t === 'transactions' ? `Transactions (${deposits.length + purchases.length})` : 'Info & Banking'}
+              {t === 'holdings' ? `Holdings (${holdings.length})` : 
+               t === 'transactions' ? `Transactions (${deposits.length + purchases.length})` : 
+               t === 'bot-trading' ? `Bot Trading (${botTrades.length})` :
+               'Info & Banking'}
               {activeTab === t && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: '#c9a84c' }} />}
             </button>
           ))}
@@ -277,6 +303,105 @@ export default function UserDetail() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'bot-trading' && (
+          <div className="space-y-4">
+            {/* Bot Settings */}
+            {botSettings && (
+              <div className="rounded-2xl p-5" style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <h3 className="text-sm font-bold text-white mb-4">Bot Settings</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <InfoRow label="Strategy" value={botSettings.strategy} />
+                  <InfoRow label="Risk Level" value={botSettings.riskLevel} />
+                  <InfoRow label="Timeframe" value={botSettings.timeframe} />
+                  <InfoRow label="Confidence Threshold" value={`${botSettings.confidenceThreshold}%`} />
+                </div>
+                <div className="flex items-center gap-2 mt-4">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: botSettings.isActive ? 'rgba(74,222,128,0.12)' : 'rgba(156,163,175,0.12)', color: botSettings.isActive ? '#4ade80' : '#9ca3af' }}>
+                    {botSettings.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: botSettings.adminControlled ? 'rgba(201,168,76,0.12)' : 'rgba(96,165,250,0.12)', color: botSettings.adminControlled ? '#c9a84c' : '#60a5fa' }}>
+                    {botSettings.adminControlled ? 'Admin Controlled' : 'User Controlled'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Active Bot Trades */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <h3 className="text-sm font-bold text-white">Active Bot Trades</h3>
+                {botTrades.length > 0 && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                    {botTrades.length} Active
+                  </span>
+                )}
+              </div>
+              {botTrades.length === 0 ? (
+                <p className="px-5 py-8 text-xs text-gray-500">No active bot trades.</p>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {botTrades.map(trade => {
+                    const timeRemainingMin = Math.max(0, Math.floor((trade.remainingSeconds || 0) / 60))
+                    const pnl = trade.finalPnl ?? trade.pnl
+                    return (
+                      <div key={trade.id} className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{trade.pair} · {trade.strategy}</p>
+                            <p className="text-xs" style={{ color: '#6b7280' }}>{trade.timeframe} · {trade.side.toUpperCase()} · {trade.amount} units</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold" style={{ color: pnl >= 0 ? '#4ade80' : '#f87171' }}>
+                              {pnl >= 0 ? '+' : ''}{fmt(pnl)}
+                            </p>
+                            <p className="text-xs" style={{ color: '#6b7280' }}>
+                              {timeRemainingMin > 0 ? `${timeRemainingMin}m left` : 'Closing soon'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <p className="text-xs" style={{ color: '#6b7280' }}>Entry Price</p>
+                            <p className="text-xs font-semibold text-white">{fmt(trade.entryPrice)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs" style={{ color: '#6b7280' }}>Expected Profit</p>
+                            <p className="text-xs font-semibold text-white">{fmt(trade.expectedProfit || 0)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              const newProfit = prompt('New expected profit:', (trade.expectedProfit || 0).toString())
+                              const newDuration = prompt('New duration (seconds):', (trade.tradeDurationSeconds || 0).toString())
+                              if (newProfit && newDuration) {
+                                handleUpdateBotProfit(parseInt(trade.id), parseFloat(newProfit), parseInt(newDuration))
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold" 
+                            style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.25)' }}
+                          >
+                            <i className="fas fa-edit mr-1" />Edit
+                          </button>
+                          <button 
+                            onClick={() => handleCloseBotTrade(parseInt(trade.id))}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold" 
+                            style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
+                          >
+                            <i className="fas fa-times mr-1" />Close
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

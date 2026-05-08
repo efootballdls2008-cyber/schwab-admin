@@ -16,22 +16,64 @@ async function unwrap<T>(res: Response, path: string): Promise<T> {
     throw new Error(body.message ?? `REQUEST ${path} failed: ${res.status}`)
   }
   const json = await res.json() as { success: boolean; data: T } | T
-  // If the server wraps in { success, data }, return data; otherwise return as-is.
   if (json !== null && typeof json === 'object' && 'data' in (json as object)) {
     return (json as { success: boolean; data: T }).data
   }
   return json as T
 }
 
+/**
+ * In-flight deduplication for GET requests.
+ * Caches the parsed JSON result (not the raw Response) so multiple concurrent
+ * callers share the same promise without consuming an already-read stream.
+ */
+const inFlightGets = new Map<string, Promise<unknown>>()
+
+/**
+ * Retry once after a short delay when the server returns 429.
+ * Reads the Retry-After header if present, otherwise waits 2 seconds.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+): Promise<Response> {
+  const res = await fetch(url, options)
+
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After')
+    const waitMs = retryAfter ? parseFloat(retryAfter) * 1000 : 2000
+    await new Promise((r) => setTimeout(r, waitMs))
+    return fetch(url, options)
+  }
+
+  return res
+}
+
 export async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: getAuthHeaders(),
-  })
-  return unwrap<T>(res, path)
+  const url = `${BASE_URL}${path}`
+  const options: RequestInit = { headers: getAuthHeaders() }
+
+  // Dedup handles its own 429 retry internally via fetchWithRetry fallback.
+  // For GET requests we go through dedup; the dedup layer calls unwrap directly.
+  if (inFlightGets.has(url)) {
+    return inFlightGets.get(url)! as Promise<T>
+  }
+
+  const promise = (async () => {
+    const res = await fetchWithRetry(url, options)
+    return unwrap<T>(res, path)
+  })()
+
+  inFlightGets.set(url, promise)
+  try {
+    return await promise
+  } finally {
+    inFlightGets.delete(url)
+  }
 }
 
 export async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithRetry(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -40,7 +82,7 @@ export async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function patch<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithRetry(`${BASE_URL}${path}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -49,7 +91,7 @@ export async function patch<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function put<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithRetry(`${BASE_URL}${path}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -58,7 +100,7 @@ export async function put<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithRetry(`${BASE_URL}${path}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   })

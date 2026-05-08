@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { adminLogin } from '../services/authService'
+import { adminLogin, verifyAdminToken } from '../services/authService'
 import type { AdminUser } from '../types'
 
 const STORAGE_KEY = 'cs_admin_user'
@@ -9,17 +9,44 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isAuthenticated: boolean
+  /** True while the initial token validation is in progress */
+  isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [admin, setAdmin] = useState<AdminUser | null>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      return stored ? (JSON.parse(stored) as AdminUser) : null
-    } catch { return null }
-  })
+  const [admin, setAdmin] = useState<AdminUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // On mount, validate the stored token against the server before trusting it.
+  // This prevents stale/expired/revoked tokens from bypassing route guards.
+  useEffect(() => {
+    async function validateStoredSession() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        const token = localStorage.getItem('admin_token')
+        if (!stored || !token) return
+
+        const parsed = JSON.parse(stored) as AdminUser
+        const valid = await verifyAdminToken()
+        if (valid) {
+          setAdmin(parsed)
+        } else {
+          // Token is expired or revoked — clear everything
+          localStorage.removeItem(STORAGE_KEY)
+          localStorage.removeItem('admin_token')
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem('admin_token')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    validateStoredSession()
+  }, [])
 
   useEffect(() => {
     if (admin) localStorage.setItem(STORAGE_KEY, JSON.stringify(admin))
@@ -39,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ admin, login, logout, isAuthenticated: admin !== null }}>
+    <AuthContext.Provider value={{ admin, login, logout, isAuthenticated: admin !== null, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

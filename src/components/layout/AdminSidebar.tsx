@@ -16,9 +16,10 @@ interface AdminSidebarProps {
   pendingDeposits: number
   pendingWithdrawals: number
   pendingOrders: number
+  activeBotTrades: number
 }
 
-export default function AdminSidebar({ open, onClose, pendingDeposits, pendingWithdrawals, pendingOrders }: AdminSidebarProps) {
+export default function AdminSidebar({ open, onClose, pendingDeposits, pendingWithdrawals, pendingOrders, activeBotTrades }: AdminSidebarProps) {
   const { admin, logout } = useAdmin()
   const { unreadCount } = useNotifications()
 
@@ -28,6 +29,7 @@ export default function AdminSidebar({ open, onClose, pendingDeposits, pendingWi
     { key: 'deposits',       label: 'Deposits',          icon: 'fas fa-arrow-down',    to: '/admin/deposits',       badge: pendingDeposits },
     { key: 'withdrawals',    label: 'Withdrawals',       icon: 'fas fa-arrow-up',      to: '/admin/withdrawals',    badge: pendingWithdrawals },
     { key: 'orders',         label: 'Buy Orders',        icon: 'fas fa-shopping-cart', to: '/admin/orders',         badge: pendingOrders },
+    { key: 'bot-trades',     label: 'Bot Trades',        icon: 'fas fa-robot',         to: '/admin/bot-trades',     badge: activeBotTrades },
     { key: 'accounts',       label: 'Platform Accounts', icon: 'fas fa-university',    to: '/admin/accounts' },
     { key: 'notifications',  label: 'Notifications',     icon: 'fas fa-bell',          to: '/admin/notifications',  badge: unreadCount },
     { key: 'settings',       label: 'Settings',          icon: 'fas fa-cog',           to: '/admin/settings' },
