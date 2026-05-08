@@ -64,7 +64,7 @@ export default function AdminLogin() {
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="admin@schwab.com"
+                    placeholder="Paxfulexchangecompany@gmail.com"
                     required
                     className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white outline-none transition-all"
                     style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
@@ -113,7 +113,7 @@ export default function AdminLogin() {
 
             {/* Demo credentials */}
             <div className="mt-6 p-3 rounded-xl text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-xs" style={{ color: '#6b7280' }}>Demo: <span className="text-gray-400">admin@schwab.com</span> / <span className="text-gray-400">admin1234</span></p>
+              <p className="text-xs" style={{ color: '#6b7280' }}>Demo: <span className="text-gray-400">Paxfulexchangecompany@gmail.com</span> / <span className="text-gray-400">admin@5555</span></p>
             </div>
           </div>
         </div>
