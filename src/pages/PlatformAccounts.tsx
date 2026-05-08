@@ -575,7 +575,7 @@ export default function PlatformAccounts() {
                   </tr>
                 ) : accounts.map((account, i) => {
                   const isActive = account.status === 'active'
-                  const rc = ROLE_COLORS[account.assignedTo]
+                  const rc = ROLE_COLORS[account.assignedTo] ?? ROLE_COLORS['all']
                   return (
                     <tr
                       key={account.id}
@@ -608,7 +608,7 @@ export default function PlatformAccounts() {
                       {/* Payment method */}
                       <td className="px-4 py-3.5">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-lg capitalize" style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa' }}>
-                          {account.paymentMethod.replace(/_/g, ' ')}
+                          {(account.paymentMethod ?? '').replace(/_/g, ' ')}
                         </span>
                       </td>
 
@@ -635,7 +635,7 @@ export default function PlatformAccounts() {
                           className="text-xs font-semibold px-2 py-0.5 rounded-lg"
                           style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}
                         >
-                          {ROLE_LABELS[account.assignedTo]}
+                          {ROLE_LABELS[account.assignedTo] ?? account.assignedTo}
                         </span>
                       </td>
 

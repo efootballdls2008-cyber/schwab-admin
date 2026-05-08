@@ -99,10 +99,11 @@ export async function put<T>(path: string, body: unknown): Promise<T> {
   return unwrap<T>(res, path)
 }
 
-export async function del<T>(path: string): Promise<T> {
+export async function del<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetchWithRetry(`${BASE_URL}${path}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
+    ...(body !== undefined && { body: JSON.stringify(body) }),
   })
   return unwrap<T>(res, path)
 }
