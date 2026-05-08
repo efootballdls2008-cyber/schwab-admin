@@ -1,4 +1,4 @@
-import { post } from '../api/client'
+import { post, get } from '../api/client'
 import type { AdminUser } from '../types'
 
 // POST /auth/login returns { success, token, user } — no { success, data } wrapper
@@ -38,5 +38,19 @@ export async function adminLogin(email: string, password: string): Promise<Admin
     }
   } catch {
     return null
+  }
+}
+
+/**
+ * Validates the stored admin token against the server.
+ * Called on app mount to reject stale/expired/revoked tokens before
+ * trusting localStorage and granting access to protected routes.
+ */
+export async function verifyAdminToken(): Promise<boolean> {
+  try {
+    await get<unknown>('/auth/me')
+    return true
+  } catch {
+    return false
   }
 }

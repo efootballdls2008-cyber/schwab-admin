@@ -10,12 +10,16 @@ import UserDetail from './pages/UserDetail'
 import Deposits from './pages/Deposits'
 import Withdrawals from './pages/Withdrawals'
 import Orders from './pages/Orders'
+import BotTrades from './pages/BotTrades'
 import PlatformAccounts from './pages/PlatformAccounts'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
 
 function Guard({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAdmin()
+  const { isAuthenticated, isLoading } = useAdmin()
+  // Wait for server-side token validation before making a redirect decision.
+  // Without this, a valid stored session would flash to /login on every page load.
+  if (isLoading) return null
   return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />
 }
 
@@ -29,6 +33,7 @@ function AppRoutes() {
       <Route path="/admin/deposits" element={<Guard><Deposits /></Guard>} />
       <Route path="/admin/withdrawals" element={<Guard><Withdrawals /></Guard>} />
       <Route path="/admin/orders" element={<Guard><Orders /></Guard>} />
+      <Route path="/admin/bot-trades" element={<Guard><BotTrades /></Guard>} />
       <Route path="/admin/accounts" element={<Guard><PlatformAccounts /></Guard>} />
       <Route path="/admin/settings" element={<Guard><Settings /></Guard>} />
       <Route path="/admin/notifications" element={<Guard><Notifications /></Guard>} />

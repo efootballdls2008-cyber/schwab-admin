@@ -1,9 +1,13 @@
 import { get, patch, post, del } from '../api/client'
 import { API } from '../api/endpoints'
-import type { PlatformAccount, PlatformSettings } from '../types'
+import type { PlatformAccount, PlatformSettings, AssignedTo, PaymentMethod } from '../types'
 
-export async function getPlatformAccounts(): Promise<PlatformAccount[]> {
-  return get<PlatformAccount[]>(API.platformAccounts)
+export async function getPlatformAccounts(opts?: { context?: AssignedTo; method?: PaymentMethod }): Promise<PlatformAccount[]> {
+  const params = new URLSearchParams()
+  if (opts?.context) params.set('context', opts.context)
+  if (opts?.method) params.set('method', opts.method)
+  const qs = params.toString()
+  return get<PlatformAccount[]>(qs ? `${API.platformAccounts}?${qs}` : API.platformAccounts)
 }
 
 export async function createPlatformAccount(data: Omit<PlatformAccount, 'id'>): Promise<PlatformAccount> {
@@ -18,9 +22,9 @@ export async function deletePlatformAccount(id: number): Promise<void> {
   await del(API.platformAccount(id))
 }
 
-export async function getDefaultPlatformAccount(): Promise<PlatformAccount | null> {
-  const accounts = await getPlatformAccounts()
-  return accounts.find(a => a.isDefault && a.status === 'active') ?? null
+export async function getDefaultPlatformAccount(context?: AssignedTo): Promise<PlatformAccount | null> {
+  const accounts = await getPlatformAccounts(context ? { context } : undefined)
+  return accounts.find(a => a.isDefault && a.status === 'active') ?? accounts.find(a => a.status === 'active') ?? null
 }
 
 /**

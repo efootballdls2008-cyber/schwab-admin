@@ -71,15 +71,24 @@ export interface Holding {
   currentPrice: number
 }
 
+export type PaymentMethod = 'bank_transfer' | 'credit_card' | 'wire_transfer' | 'crypto'
+export type AssignedTo = 'deposit' | 'buy_crypto' | 'buy_stock' | 'all'
+
 export interface PlatformAccount {
   id: number
   accountName: string
+  paymentMethod: PaymentMethod
   bankName: string
   accountNumber: string
   routingNumber: string
   accountType: string
   swiftCode: string
+  bankAddress: string
+  myAddress: string
+  walletAddress: string
+  network: string
   isDefault: boolean
+  assignedTo: AssignedTo
   status: 'active' | 'inactive'
 }
 
@@ -139,9 +148,42 @@ export interface AdminNotification {
   id: number
   title: string
   message: string
-  type: 'info' | 'success' | 'warning' | 'error' | 'user' | 'deposit' | 'withdrawal' | 'order' | 'login'
+  type: 'info' | 'success' | 'warning' | 'error' | 'user' | 'deposit' | 'withdrawal' | 'order' | 'login' | 'bot_trade'
   isRead: boolean
   relatedId: string | null
   relatedType: string | null
   createdAt: string
+}
+
+export interface BotTrade {
+  id: number
+  userId: number
+  userName: string
+  strategy: string
+  pair: string
+  timeframe: string
+  side: 'buy' | 'sell'
+  quantity: number
+  entryPrice: number
+  expectedProfit: number
+  displayPnl: number
+  finalPnl: number | null
+  status: 'open' | 'closed'
+  closeReason: 'take_profit' | 'duration_expired' | 'admin_closed' | null
+  tradeDurationSeconds: number
+  openedAt: string
+  closedAt: string | null
+  timeRemaining: number
+}
+
+export interface BotSettings {
+  id: number
+  userId: number
+  strategy: string
+  riskLevel: string
+  timeframe: string
+  confidenceThreshold: number
+  tradeDurationSeconds: number
+  adminControlled: boolean
+  isActive: boolean
 }

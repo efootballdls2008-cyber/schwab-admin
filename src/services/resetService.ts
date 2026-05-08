@@ -1,15 +1,19 @@
 import { get, del, patch } from '../api/client'
 import { API } from '../api/endpoints'
 
-interface Identifiable { id: number | string }
 interface UserRecord { id: number; role: string }
+interface Identifiable { id: number | string }
 
-/** Delete all records from a collection by fetching then deleting each one. */
-async function clearCollection(
+/**
+ * Delete all records from a collection by fetching then deleting each one.
+ * Used for per-user scoped resets where bulk delete isn't available.
+ */
+async function clearCollectionByUser(
   endpoint: string,
   itemEndpoint: (id: number | string) => string,
+  userId: number,
 ): Promise<void> {
-  const items = await get<Identifiable[]>(endpoint)
+  const items = await get<Identifiable[]>(`${endpoint}?userId=${userId}`).catch(() => [] as Identifiable[])
   await Promise.all(items.map((item) => del(itemEndpoint(item.id))))
 }
 
@@ -22,47 +26,42 @@ export async function resetUserData(userId: number): Promise<void> {
   // Zero balance
   await patch(API.user(userId), { balance: 0 })
 
-  // Fetch and delete user-scoped records in parallel
-  const [deposits, purchases, holdings, botTrades, tradeHistory, notifications, profitOverview] =
-    await Promise.all([
-      get<Identifiable[]>(`${API.deposits}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.purchases}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.holdings}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.botTrades}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.tradeHistory}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.notifications}?userId=${userId}`).catch(() => [] as Identifiable[]),
-      get<Identifiable[]>(`${API.profitOverview}?userId=${userId}`).catch(() => [] as Identifiable[]),
-    ])
-
+  // Delete all user-scoped records in parallel
   await Promise.all([
-    ...deposits.map((r) => del(API.deposit(r.id as number))),
-    ...purchases.map((r) => del(API.purchase(r.id as number))),
-    ...holdings.map((r) => del(API.holding(r.id as number))),
-    ...botTrades.map((r) => del(API.botTrade(r.id))),
-    ...tradeHistory.map((r) => del(API.tradeHistoryItem(r.id as number))),
-    ...notifications.map((r) => del(API.notification(r.id as number))),
-    ...profitOverview.map((r) => del(API.profitOverviewItem(r.id as number))),
+    clearCollectionByUser(API.deposits,      API.deposit,          userId),
+    clearCollectionByUser(API.purchases,     API.purchase,         userId),
+    clearCollectionByUser(API.holdings,      API.holding,          userId),
+    clearCollectionByUser(API.botTrades,     API.botTrade,         userId),
+    clearCollectionByUser(API.tradeHistory,  API.tradeHistoryItem, userId),
+    clearCollectionByUser(API.notifications, API.notification,     userId),
+    clearCollectionByUser(API.profitOverview, API.profitOverviewItem, userId),
   ])
 }
 
 /**
  * Reset ALL platform data:
  * - Zero all user balances
- * - Clear all transactional collections
+ * - Bulk-delete all transactional collections in one request each
+ *
+ * Uses admin bulk-delete endpoints (DELETE /collection without an id)
+ * instead of fetch-then-delete-each, which avoids 422 errors and is
+ * orders of magnitude faster with large datasets.
  */
 export async function resetAllData(): Promise<void> {
+  // Zero all user balances
   const users = await get<UserRecord[]>(API.users)
   await Promise.all(users.map((u) => patch(API.user(u.id), { balance: 0 })))
 
+  // Bulk delete every transactional table — single DELETE per collection
   await Promise.all([
-    clearCollection(API.deposits, API.deposit),
-    clearCollection(API.purchases, API.purchase),
-    clearCollection(API.holdings, API.holding),
-    clearCollection(API.botTrades, API.botTrade),
-    clearCollection(API.tradeHistory, API.tradeHistoryItem),
-    clearCollection(API.notifications, API.notification),
-    clearCollection(API.adminActions, API.adminAction),
-    clearCollection(API.profitOverview, API.profitOverviewItem),
+    del(API.deposits),
+    del(API.purchases),
+    del(API.holdings),
+    del(API.botTrades),
+    del(API.tradeHistory),
+    del(API.notifications),
+    del(API.adminActions),
+    del(API.profitOverview),
   ])
 }
 
@@ -81,7 +80,7 @@ export async function deleteAllUsers(): Promise<{ deleted: number }> {
   await Promise.all(memberUsers.map((u) => del(API.user(u.id))))
 
   // Clear admin action logs
-  await clearCollection(API.adminActions, API.adminAction)
+  await del(API.adminActions).catch(() => {/* ignore if already empty */})
 
   return { deleted: memberUsers.length }
 }
