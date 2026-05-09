@@ -54,7 +54,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Connect socket when token is available
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
+    const token = sessionStorage.getItem('admin_token')
     if (!token) return
 
     // Avoid creating a duplicate socket (e.g. React StrictMode double-invoke)
@@ -111,7 +111,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Initial fetch
   useEffect(() => {
-    const token = localStorage.getItem('admin_token')
+    const token = sessionStorage.getItem('admin_token')
     if (token) fetchNotifications()
   }, [fetchNotifications])
 

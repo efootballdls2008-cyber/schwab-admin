@@ -1,7 +1,30 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+/**
+ * TOKEN STORAGE — SECURITY NOTE
+ *
+ * The admin JWT is stored in sessionStorage rather than localStorage.
+ *
+ * Why sessionStorage is better than localStorage for an admin token:
+ *   • Scoped to the current browser tab — closing the tab clears it automatically.
+ *   • Not shared across tabs, so a compromised tab cannot read another tab's token.
+ *   • Not persisted across browser restarts, reducing the window of exposure.
+ *
+ * Why this is still not as secure as httpOnly cookies:
+ *   • Any JavaScript running on the page (e.g. from an XSS attack) can still
+ *     read sessionStorage. httpOnly cookies are invisible to JS entirely.
+ *
+ * Long-term recommendation:
+ *   Move to httpOnly, SameSite=Strict cookies set by the backend on login.
+ *   This requires the admin SPA and the API to share an origin (same domain/subdomain)
+ *   or the backend to set the cookie with appropriate CORS credentials support.
+ *   Until that infrastructure change is made, sessionStorage is the best available
+ *   option for a separate-origin SPA + API architecture.
+ */
+const TOKEN_KEY = 'admin_token'
+
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('admin_token')
+  const token = sessionStorage.getItem(TOKEN_KEY)
   const headers: HeadersInit = { 'Content-Type': 'application/json' }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
