@@ -24,7 +24,9 @@ export async function adminLogin(email: string, password: string): Promise<Admin
     // Only allow Admin role
     if (response.user.role !== 'Admin') return null
 
-    localStorage.setItem('admin_token', response.token)
+    // Store in sessionStorage — tab-scoped, cleared on close, not shared across tabs.
+    // See client.ts TOKEN_KEY comment for the full security rationale.
+    sessionStorage.setItem('admin_token', response.token)
 
     return {
       id: response.user.id,

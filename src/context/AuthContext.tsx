@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function validateStoredSession() {
       try {
         const stored = localStorage.getItem(STORAGE_KEY)
-        const token = localStorage.getItem('admin_token')
+        const token = sessionStorage.getItem('admin_token')  // sessionStorage — tab-scoped
         if (!stored || !token) return
 
         const parsed = JSON.parse(stored) as AdminUser
@@ -35,11 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // Token is expired or revoked — clear everything
           localStorage.removeItem(STORAGE_KEY)
-          localStorage.removeItem('admin_token')
+          sessionStorage.removeItem('admin_token')
         }
       } catch {
         localStorage.removeItem(STORAGE_KEY)
-        localStorage.removeItem('admin_token')
+        sessionStorage.removeItem('admin_token')
       } finally {
         setIsLoading(false)
       }
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => { 
     setAdmin(null)
     localStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem('admin_token')
+    sessionStorage.removeItem('admin_token')  // sessionStorage — tab-scoped
   }
 
   return (
