@@ -617,13 +617,13 @@ export default function PlatformAccounts() {
                         <div className="text-xs text-gray-300">
                           {account.paymentMethod === 'crypto' ? (
                             <>
-                              <p className="font-mono">{account.walletAddress?.slice(0, 20)}…</p>
+                              <p className="font-mono">{String(account.walletAddress ?? '').slice(0, 20)}…</p>
                               <p style={{ color: '#6b7280' }}>{account.network}</p>
                             </>
                           ) : (
                             <>
                               <p>{account.bankName}</p>
-                              <p style={{ color: '#6b7280' }}>****{account.accountNumber?.slice(-4)}</p>
+                              <p style={{ color: '#6b7280' }}>****{String(account.accountNumber ?? '').slice(-4)}</p>
                             </>
                           )}
                         </div>
