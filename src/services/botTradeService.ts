@@ -55,19 +55,19 @@ export async function getUserActiveBotTrades(userId: number): Promise<AdminBotTr
 
 /** Update bot trade profit and duration */
 export async function updateBotTradeProfit(
-  tradeId: number,
+  tradeId: string,
   expectedProfit: number,
   tradeDurationSeconds: number
 ): Promise<AdminBotTrade> {
-  return patch<AdminBotTrade>(`/botTrades/${tradeId}/profit`, {
+  return patch<AdminBotTrade>(`/botTrades/admin/${tradeId}/profit`, {
     expectedProfit,
     tradeDurationSeconds,
   })
 }
 
-/** Close a bot trade */
-export async function closeBotTrade(tradeId: number): Promise<AdminBotTrade> {
-  return post<AdminBotTrade>(`/botTrades/${tradeId}/close`, {})
+/** Close a bot trade (admin force-close) */
+export async function closeBotTrade(tradeId: string): Promise<AdminBotTrade> {
+  return post<AdminBotTrade>(`/botTrades/admin/${tradeId}/force-close`, {})
 }
 
 /** Admin executes a bot trade for a specific user */
