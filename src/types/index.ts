@@ -39,6 +39,7 @@ export interface Deposit {
   time: string
   txId: string
   note: string
+  screenshot: string | null
   rejectionReason: string | null
 }
 
