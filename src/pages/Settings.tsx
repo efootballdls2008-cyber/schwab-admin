@@ -436,6 +436,11 @@ export default function Settings() {
                 hint="Concurrent bot trades allowed"
               />
             </div>
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+                Save settings to apply these defaults to all existing users' bot configurations immediately.
+              </p>
+            </div>
           </Card>
 
           {/* Save */}

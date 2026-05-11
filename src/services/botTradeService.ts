@@ -34,6 +34,7 @@ export interface ExecuteTradePayload {
   strategy: string
   timeframe: string
   expectedProfit?: number
+  expectedLoss?: number
   tradeDurationSeconds?: number
   signal?: string
 }
