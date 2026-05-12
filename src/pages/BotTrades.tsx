@@ -20,8 +20,6 @@ function fmtCurrency(n: number, currency = 'USD') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
   }
 }
-// Fallback USD formatter for platform-level aggregates
-const fmt = (n: number) => fmtCurrency(n)
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
