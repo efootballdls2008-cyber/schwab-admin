@@ -11,6 +11,15 @@ import type { AdminUser, Deposit, Purchase, AdminAction } from '../types'
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
+function fmtCurrency(n: number, currency = 'USD') {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
+
 function StatCard({ icon, label, value, color, bg, onClick, badge }: {
   icon: string; label: string; value: string | number; color: string; bg: string; onClick?: () => void; badge?: number
 }) {
@@ -133,7 +142,7 @@ export default function Dashboard() {
                         <p className="text-xs font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : `User #${d.userId}`}</p>
                         <p className="text-xs" style={{ color: '#6b7280' }}>{d.txId} · {d.method}</p>
                       </div>
-                      <span className="text-sm font-bold" style={{ color: '#4ade80' }}>+${d.amount.toLocaleString()}</span>
+                      <span className="text-sm font-bold" style={{ color: '#4ade80' }}>{fmtCurrency(d.amount, users.find(u => u.id === d.userId)?.currency)}</span>
                     </div>
                   )
                 })}
@@ -158,7 +167,7 @@ export default function Dashboard() {
                         <p className="text-xs font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : `User #${d.userId}`}</p>
                         <p className="text-xs" style={{ color: '#6b7280' }}>{d.txId} · {d.method}</p>
                       </div>
-                      <span className="text-sm font-bold" style={{ color: '#f87171' }}>-${d.amount.toLocaleString()}</span>
+                      <span className="text-sm font-bold" style={{ color: '#f87171' }}>-{fmtCurrency(d.amount, users.find(u => u.id === d.userId)?.currency)}</span>
                     </div>
                   )
                 })}
@@ -183,7 +192,7 @@ export default function Dashboard() {
                         <p className="text-xs font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : `User #${p.userId}`}</p>
                         <p className="text-xs" style={{ color: '#6b7280' }}>{p.quantity} {p.symbol} · {p.type === 'buy_stock' ? 'Stock' : 'Crypto'}</p>
                       </div>
-                      <span className="text-sm font-bold" style={{ color: '#f59e0b' }}>${p.totalCost.toLocaleString()}</span>
+                      <span className="text-sm font-bold" style={{ color: '#f59e0b' }}>{fmtCurrency(p.totalCost, users.find(u => u.id === p.userId)?.currency)}</span>
                     </div>
                   )
                 })}
@@ -208,7 +217,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-bold" style={{ color: bt.pnl >= 0 ? '#4ade80' : '#f87171' }}>
-                        {bt.pnl >= 0 ? '+' : ''}{fmt(bt.pnl)}
+                        {bt.pnl >= 0 ? '+' : ''}{fmtCurrency(bt.pnl, users.find(u => u.id === bt.userId)?.currency)}
                       </span>
                       <p className="text-xs" style={{ color: '#6b7280' }}>
                         {Math.max(0, Math.floor((bt.remainingSeconds || 0) / 60))}m left

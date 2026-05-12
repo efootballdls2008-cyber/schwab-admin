@@ -5,7 +5,15 @@ import { getAllDeposits, approveWithdrawal, rejectWithdrawal } from '../services
 import { getAllUsers } from '../services/userService'
 import type { Deposit, AdminUser } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+function fmtCurrency(n: number, currency = 'USD') {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
+const fmtUser = (n: number, user?: AdminUser) => fmtCurrency(n, user?.currency ?? 'USD')
 type FilterKey = 'all' | 'pending' | 'completed' | 'rejected'
 
 function StatusBadge({ status }: { status: Deposit['status'] }) {
@@ -25,6 +33,7 @@ function WithdrawalModal({ deposit, user, onApprove, onReject, onClose, loading 
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const hasWithdrawInfo = user?.withdrawBankName || user?.withdrawAccountNumber
+  const fmt = (n: number) => fmtUser(n, user)
 
   return (
     <AnimatePresence>
@@ -162,7 +171,7 @@ export default function Withdrawals() {
     setActionLoading(true)
     try {
       await approveWithdrawal(selected)
-      showToast(`Withdrawal ${selected.txId} approved. ${fmt(selected.amount)} deducted.`, 'success')
+      showToast(`Withdrawal ${selected.txId} approved. ${fmtUser(selected.amount, users.find(u => u.id === selected.userId))} deducted.`, 'success')
       setSelected(null)
       await load()
     } catch (e) { showToast(e instanceof Error ? e.message : 'Failed', 'error') }
@@ -237,7 +246,7 @@ export default function Withdrawals() {
                         <p className="text-xs font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : `User #${d.userId}`}</p>
                         <p className="text-xs" style={{ color: '#6b7280' }}>{user?.email}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: '#a78bfa' }}>{fmt(d.amount)}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: '#a78bfa' }}>{fmtUser(d.amount, users.find(u => u.id === d.userId))}</td>
                       <td className="px-4 py-3.5 text-xs text-white">{d.method}</td>
                       <td className="px-4 py-3.5">
                         {user?.withdrawBankName ? (

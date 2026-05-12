@@ -12,7 +12,14 @@ import {
 import { getAllUsers } from '../services/userService'
 import type { AdminUser } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+function fmtCurrency(n: number, currency = 'USD') {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -643,14 +650,14 @@ export default function BotTrades() {
                         <SideBadge side={trade.side} />
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className="text-sm text-white">{fmt(trade.entryPrice)}</span>
+                        <span className="text-sm text-white">{fmtCurrency(trade.entryPrice, users.find(u => u.id === trade.userId)?.currency)}</span>
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="text-sm text-white">{trade.amount}</span>
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>
-                          {trade.expectedProfit ? fmt(trade.expectedProfit) : 'Random'}
+                          {trade.expectedProfit ? fmtCurrency(trade.expectedProfit, users.find(u => u.id === trade.userId)?.currency) : 'Random'}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
