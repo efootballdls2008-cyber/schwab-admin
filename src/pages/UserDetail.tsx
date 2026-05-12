@@ -8,7 +8,17 @@ import { getUserActiveBotTrades, updateBotTradeProfit, closeBotTrade, AdminBotTr
 import { get } from '../api/client'
 import type { AdminUser, Deposit, Holding, Purchase, BotSettings } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+// Build a currency formatter based on the user's stored currency code
+function makeFmt(currency: string) {
+  // Use Intl if the currency code is a valid 3-letter ISO code, else fall back to USD
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    const nf = new Intl.NumberFormat('en-US', { style: 'currency', currency: code })
+    return (n: number) => nf.format(n)
+  } catch {
+    return (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
 
 function InfoRow({ label, value }: { label: string; value: string | undefined | null }) {
   return (
@@ -120,6 +130,8 @@ export default function UserDetail() {
   const isSuspended = user.accountStatus === 'suspended'
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
   const totalHoldingsValue = holdings.reduce((s, h) => s + h.quantity * h.currentPrice, 0)
+  // Dynamic formatter — uses the user's stored currency (e.g. NGN, GBP, EUR)
+  const fmt = makeFmt(user.currency ?? 'USD')
 
   return (
     <AdminLayout title="User Detail" subtitle={`${user.firstName} ${user.lastName}`}>
@@ -153,7 +165,15 @@ export default function UserDetail() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <p className="text-2xl font-bold text-white">{fmt(user.balance)}</p>
-            <p className="text-xs" style={{ color: '#6b7280' }}>Available Balance</p>
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                style={{ background: 'rgba(162,133,57,0.15)', color: '#c9a84c', border: '1px solid rgba(162,133,57,0.3)' }}
+              >
+                {user.currency || 'USD'}
+              </span>
+              <p className="text-xs" style={{ color: '#6b7280' }}>Available Balance</p>
+            </div>
             <button onClick={handleToggleStatus} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: isSuspended ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)', color: isSuspended ? '#4ade80' : '#f87171', border: `1px solid ${isSuspended ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}` }}>
               <i className={`fas ${isSuspended ? 'fa-unlock' : 'fa-ban'} mr-1.5`} />{isSuspended ? 'Activate Account' : 'Suspend Account'}
             </button>
@@ -165,15 +185,15 @@ export default function UserDetail() {
           <h3 className="text-sm font-bold text-white mb-4">Adjust Balance</h3>
           <div className="flex gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[160px]">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold" style={{ color: '#6b7280' }}>$</span>
-              <input type="number" step="0.01" placeholder="Amount (use - to debit)" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold" style={{ color: '#6b7280' }}>{user.currency || 'USD'}</span>
+              <input type="number" step="0.01" placeholder="Amount (use - to debit)" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} className="w-full pl-14 pr-4 py-2.5 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
             </div>
             <input type="text" placeholder="Reason (optional)" value={adjustNote} onChange={e => setAdjustNote(e.target.value)} className="flex-1 min-w-[160px] px-4 py-2.5 rounded-xl text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
             <button onClick={handleAdjustBalance} disabled={adjustLoading || !adjustAmount} className="px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-40" style={{ background: 'linear-gradient(135deg,#a28539,#c9a84c)', color: '#0d0824' }}>
               {adjustLoading ? <i className="fas fa-spinner fa-spin" /> : 'Apply'}
             </button>
           </div>
-          <p className="text-xs mt-2" style={{ color: '#6b7280' }}>Use positive values to credit, negative to debit. Current balance: {fmt(user.balance)}</p>
+          <p className="text-xs mt-2" style={{ color: '#6b7280' }}>Use positive values to credit, negative to debit. Current balance: {fmt(user.balance)} ({user.currency || 'USD'})</p>
         </div>
 
         {/* Tabs */}
@@ -200,6 +220,7 @@ export default function UserDetail() {
               <InfoRow label="Phone" value={user.phone} />
               <InfoRow label="Date of Birth" value={user.dateOfBirth} />
               <InfoRow label="Country" value={user.country} />
+              <InfoRow label="Currency" value={user.currency || 'USD'} />
               <InfoRow label="Address" value={user.address} />
               <InfoRow label="Member Since" value={user.memberSince} />
             </div>

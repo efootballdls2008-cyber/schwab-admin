@@ -1,9 +1,35 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AdminLayout from '../components/layout/AdminLayout'
 import { get, post, patch, del } from '../api/client'
 import { API } from '../api/endpoints'
 import type { PlatformAccount, PaymentMethod, AssignedTo } from '../types'
+
+// ── Crypto coin → network map ─────────────────────────────────
+interface CoinOption { symbol: string; name: string; networks: string[] }
+const CRYPTO_COINS: CoinOption[] = [
+  { symbol: 'BTC',  name: 'Bitcoin',        networks: ['Bitcoin (BTC)'] },
+  { symbol: 'ETH',  name: 'Ethereum',       networks: ['ERC-20 / Ethereum'] },
+  { symbol: 'USDT', name: 'Tether',         networks: ['ERC20', 'TRC20', 'BEP20', 'Solana'] },
+  { symbol: 'USDC', name: 'USD Coin',       networks: ['ERC20', 'Solana', 'Polygon', 'TRC20'] },
+  { symbol: 'BNB',  name: 'Binance Coin',   networks: ['BEP20 / BNB Smart Chain'] },
+  { symbol: 'SOL',  name: 'Solana',         networks: ['Solana'] },
+  { symbol: 'TRX',  name: 'Tron',           networks: ['TRC20 / Tron'] },
+  { symbol: 'XRP',  name: 'Ripple',         networks: ['XRP Ledger'] },
+  { symbol: 'ADA',  name: 'Cardano',        networks: ['Cardano'] },
+  { symbol: 'DOGE', name: 'Dogecoin',       networks: ['Dogecoin'] },
+  { symbol: 'LTC',  name: 'Litecoin',       networks: ['Litecoin'] },
+  { symbol: 'POL',  name: 'Polygon',        networks: ['Polygon'] },
+  { symbol: 'AVAX', name: 'Avalanche',      networks: ['C-Chain'] },
+  { symbol: 'TON',  name: 'Toncoin',        networks: ['TON Network'] },
+  { symbol: 'XLM',  name: 'Stellar',        networks: ['Stellar'] },
+]
+
+// Build reverse map: network → coin symbol (for auto-select)
+const NETWORK_TO_COIN: Record<string, string> = {}
+CRYPTO_COINS.forEach(c => {
+  if (c.networks.length === 1) NETWORK_TO_COIN[c.networks[0]] = c.symbol
+})
 
 // ── Real API service functions ────────────────────────────────
 const getAllPlatformAccounts = (): Promise<PlatformAccount[]> =>
@@ -115,6 +141,7 @@ function PlatformAccountModal({
   onClose: () => void
   onSave: (account: PlatformAccount) => void
 }) {
+  const qrInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState<Partial<PlatformAccount>>(
     account || {
       accountName: '',
@@ -126,13 +153,56 @@ function PlatformAccountModal({
       swiftCode: '',
       bankAddress: '',
       myAddress: '',
+      homeAddress: '',
+      iban: '',
+      sortCode: '',
+      currencyAccepted: '',
+      coinSymbol: '',
       walletAddress: '',
       network: '',
+      qrCodeImage: null,
       isDefault: false,
       assignedTo: 'deposit',
       status: 'active',
     }
   )
+
+  const isCrypto = formData.paymentMethod === 'crypto'
+  const isWire   = formData.paymentMethod === 'wire_transfer'
+
+  // Auto-select network when coin changes (single-network coins)
+  const handleCoinChange = (symbol: string) => {
+    const coin = CRYPTO_COINS.find(c => c.symbol === symbol)
+    const autoNetwork = coin && coin.networks.length === 1 ? coin.networks[0] : ''
+    setFormData(prev => ({ ...prev, coinSymbol: symbol, network: autoNetwork }))
+  }
+
+  // Auto-select coin when network changes (unambiguous networks)
+  const handleNetworkChange = (network: string) => {
+    const autoCoin = NETWORK_TO_COIN[network] ?? formData.coinSymbol ?? ''
+    setFormData(prev => ({ ...prev, network, coinSymbol: autoCoin }))
+  }
+
+  // Available networks for selected coin
+  const availableNetworks = formData.coinSymbol
+    ? (CRYPTO_COINS.find(c => c.symbol === formData.coinSymbol)?.networks ?? [])
+    : CRYPTO_COINS.flatMap(c => c.networks)
+
+  // QR code upload
+  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setFormData(prev => ({ ...prev, qrCodeImage: ev.target?.result as string }))
+    reader.readAsDataURL(file)
+  }
+
+  const setField = (key: keyof PlatformAccount) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setFormData(prev => ({ ...prev, [key]: e.target.value }))
+
+  const inputCls = 'w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none'
+  const inputStyle = { background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }
+  const labelCls = 'block text-xs font-semibold text-gray-400 mb-2'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,24 +246,15 @@ function PlatformAccountModal({
             {/* Account Name + Payment Method */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-2">Account Name</label>
-                <input
-                  type="text"
-                  value={formData.accountName}
-                  onChange={e => setFormData({ ...formData, accountName: e.target.value })}
-                  className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                  style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  required
-                />
+                <label className={labelCls}>Account Name</label>
+                <input type="text" value={formData.accountName ?? ''} onChange={setField('accountName')}
+                  className={inputCls} style={inputStyle} required />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-2">Payment Method</label>
-                <select
-                  value={formData.paymentMethod}
+                <label className={labelCls}>Payment Method</label>
+                <select value={formData.paymentMethod}
                   onChange={e => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
-                  className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                  style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
+                  className={inputCls} style={inputStyle}>
                   <option value="bank_transfer">Bank Transfer</option>
                   <option value="credit_card">Credit Card</option>
                   <option value="wire_transfer">Wire Transfer</option>
@@ -202,28 +263,91 @@ function PlatformAccountModal({
               </div>
             </div>
 
-            {/* Bank fields vs Crypto fields */}
-            {formData.paymentMethod !== 'crypto' ? (
-              <>
+            {/* ── CRYPTO FIELDS ── */}
+            {isCrypto && (
+              <div className="rounded-xl p-4 space-y-4"
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <p className="text-sm font-bold" style={{ color: '#f59e0b' }}>
+                  <i className="fas fa-coins mr-2" />Cryptocurrency Details
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">Bank Name</label>
-                    <input
-                      type="text"
-                      value={formData.bankName}
-                      onChange={e => setFormData({ ...formData, bankName: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    />
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Coin / Token</label>
+                    <select value={formData.coinSymbol ?? ''} onChange={e => handleCoinChange(e.target.value)}
+                      className={inputCls} style={inputStyle}>
+                      <option value="">— Select Coin —</option>
+                      {CRYPTO_COINS.map(c => (
+                        <option key={c.symbol} value={c.symbol}>{c.name} ({c.symbol})</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">Account Type</label>
-                    <select
-                      value={formData.accountType}
-                      onChange={e => setFormData({ ...formData, accountType: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Network / Address Type</label>
+                    <select value={formData.network ?? ''} onChange={e => handleNetworkChange(e.target.value)}
+                      className={inputCls} style={inputStyle}>
+                      <option value="">— Select Network —</option>
+                      {availableNetworks.map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Wallet Address</label>
+                  <input type="text" value={formData.walletAddress ?? ''} onChange={setField('walletAddress')}
+                    placeholder="Enter full wallet address" className={inputCls} style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>
+                    QR Code Image <span className="text-xs font-normal" style={{ color: '#6b7280' }}>(optional)</span>
+                  </label>
+                  <input ref={qrInputRef} type="file" accept="image/*" className="hidden" onChange={handleQrUpload} />
+                  {formData.qrCodeImage ? (
+                    <div className="flex items-center gap-3">
+                      <img src={formData.qrCodeImage} alt="QR Code"
+                        className="w-20 h-20 rounded-xl object-cover"
+                        style={{ border: '1px solid rgba(245,158,11,0.3)' }} />
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold" style={{ color: '#4ade80' }}>
+                          <i className="fas fa-check-circle mr-1" />QR code uploaded
+                        </p>
+                        <button type="button" onClick={() => qrInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                          style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+                          <i className="fas fa-redo mr-1" />Change
+                        </button>
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, qrCodeImage: null }))}
+                          className="ml-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                          style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}>
+                          <i className="fas fa-trash mr-1" />Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => qrInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 py-4 rounded-xl transition-all hover:opacity-80"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(245,158,11,0.25)' }}>
+                      <i className="fas fa-qrcode text-lg" style={{ color: '#f59e0b' }} />
+                      <span className="text-sm font-semibold" style={{ color: '#9ca3af' }}>Upload QR Code Image</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── BANK TRANSFER FIELDS ── */}
+            {formData.paymentMethod === 'bank_transfer' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Bank Name</label>
+                    <input type="text" value={formData.bankName ?? ''} onChange={setField('bankName')}
+                      className={inputCls} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Account Type</label>
+                    <select value={formData.accountType ?? 'Checking'} onChange={setField('accountType')}
+                      className={inputCls} style={inputStyle}>
                       <option value="Checking">Checking</option>
                       <option value="Savings">Savings</option>
                       <option value="Business">Business</option>
@@ -232,94 +356,120 @@ function PlatformAccountModal({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">Account Number</label>
-                    <input
-                      type="text"
-                      value={formData.accountNumber}
-                      onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    />
+                    <label className={labelCls}>Account Number</label>
+                    <input type="text" value={formData.accountNumber ?? ''} onChange={setField('accountNumber')}
+                      className={inputCls} style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">Routing Number</label>
-                    <input
-                      type="text"
-                      value={formData.routingNumber}
-                      onChange={e => setFormData({ ...formData, routingNumber: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    />
+                    <label className={labelCls}>Routing Number</label>
+                    <input type="text" value={formData.routingNumber ?? ''} onChange={setField('routingNumber')}
+                      className={inputCls} style={inputStyle} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">SWIFT / BIC Code</label>
-                    <input
-                      type="text"
-                      value={formData.swiftCode}
-                      onChange={e => setFormData({ ...formData, swiftCode: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    />
+                    <label className={labelCls}>SWIFT / BIC Code</label>
+                    <input type="text" value={formData.swiftCode ?? ''} onChange={setField('swiftCode')}
+                      className={inputCls} style={inputStyle} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2">Bank Address</label>
-                    <input
-                      type="text"
-                      value={formData.bankAddress}
-                      onChange={e => setFormData({ ...formData, bankAddress: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                      style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    />
+                    <label className={labelCls}>Bank Address</label>
+                    <input type="text" value={formData.bankAddress ?? ''} onChange={setField('bankAddress')}
+                      className={inputCls} style={inputStyle} />
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2">Wallet Address</label>
-                  <input
-                    type="text"
-                    value={formData.walletAddress}
-                    onChange={e => setFormData({ ...formData, walletAddress: e.target.value })}
-                    className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                    style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  />
+                  <label className={labelCls}>Home Address</label>
+                  <input type="text" value={formData.homeAddress ?? ''} onChange={setField('homeAddress')}
+                    placeholder="Account holder's home address" className={inputCls} style={inputStyle} />
+                </div>
+              </div>
+            )}
+
+            {/* ── WIRE TRANSFER FIELDS ── */}
+            {isWire && (
+              <div className="rounded-xl p-4 space-y-4"
+                style={{ background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                <p className="text-sm font-bold" style={{ color: '#60a5fa' }}>
+                  <i className="fas fa-exchange-alt mr-2" />Wire Transfer — Beneficiary Information
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Beneficiary / Account Name</label>
+                    <input type="text" value={formData.accountName ?? ''} onChange={setField('accountName')}
+                      placeholder="Full legal name on account" className={inputCls} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Bank Name</label>
+                    <input type="text" value={formData.bankName ?? ''} onChange={setField('bankName')}
+                      className={inputCls} style={inputStyle} />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2">Network</label>
-                  <input
-                    type="text"
-                    value={formData.network}
-                    onChange={e => setFormData({ ...formData, network: e.target.value })}
-                    className="w-full px-3 py-2.5 text-sm text-gray-300 rounded-xl outline-none"
-                    style={{ background: 'rgba(22,15,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    placeholder="e.g., Bitcoin, Ethereum"
-                  />
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Bank Address</label>
+                  <input type="text" value={formData.bankAddress ?? ''} onChange={setField('bankAddress')}
+                    placeholder="Full bank branch address" className={inputCls} style={inputStyle} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Account Number</label>
+                    <input type="text" value={formData.accountNumber ?? ''} onChange={setField('accountNumber')}
+                      className={inputCls} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>IBAN (Europe / International)</label>
+                    <input type="text" value={formData.iban ?? ''} onChange={setField('iban')}
+                      placeholder="e.g. GB29NWBK60161331926819" className={inputCls} style={inputStyle} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>SWIFT / BIC Code</label>
+                    <input type="text" value={formData.swiftCode ?? ''} onChange={setField('swiftCode')}
+                      placeholder="e.g. BOFAUS3N" className={inputCls} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Routing Number / ABA (US)</label>
+                    <input type="text" value={formData.routingNumber ?? ''} onChange={setField('routingNumber')}
+                      placeholder="e.g. 026009593" className={inputCls} style={inputStyle} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Sort Code (UK)</label>
+                    <input type="text" value={formData.sortCode ?? ''} onChange={setField('sortCode')}
+                      placeholder="e.g. 60-16-13" className={inputCls} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Currency Accepted</label>
+                    <input type="text" value={formData.currencyAccepted ?? ''} onChange={setField('currencyAccepted')}
+                      placeholder="e.g. USD, EUR, GBP, NGN" className={inputCls} style={inputStyle} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>Home Address</label>
+                  <input type="text" value={formData.homeAddress ?? ''} onChange={setField('homeAddress')}
+                    placeholder="Account holder's home address" className={inputCls} style={inputStyle} />
                 </div>
               </div>
             )}
 
             {/* Assigned To */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-2">Assigned To</label>
+              <label className={labelCls}>Assigned To</label>
               <div className="grid grid-cols-2 gap-2">
                 {(Object.entries(ROLE_LABELS) as [AssignedTo, string][]).map(([role, label]) => {
                   const c = ROLE_COLORS[role]
                   const active = formData.assignedTo === role
                   return (
-                    <button
-                      key={role}
-                      type="button"
+                    <button key={role} type="button"
                       onClick={() => setFormData({ ...formData, assignedTo: role })}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
                       style={{
                         background: active ? c.bg : 'rgba(255,255,255,0.03)',
                         color: active ? c.text : '#6b7280',
                         border: `1px solid ${active ? c.border : 'rgba(255,255,255,0.07)'}`,
-                      }}
-                    >
+                      }}>
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: c.text }} />
                       {label}
                       {active && <i className="fas fa-check ml-auto text-[10px]" />}
@@ -332,30 +482,22 @@ function PlatformAccountModal({
             {/* Set as default */}
             <div className="flex items-center gap-3 pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.isDefault ?? false}
+                <input type="checkbox" checked={formData.isDefault ?? false}
                   onChange={e => setFormData({ ...formData, isDefault: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500"
-                />
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500" />
                 <span className="text-sm text-gray-300">Set as default for selected role</span>
               </label>
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
+              <button type="button" onClick={onClose}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/10"
-                style={{ background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
+                style={{ background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.08)' }}>
                 Cancel
               </button>
-              <button
-                type="submit"
+              <button type="submit"
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90"
-                style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)', color: '#fff' }}
-              >
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)', color: '#fff' }}>
                 {account ? 'Update Account' : 'Add Account'}
               </button>
             </div>
@@ -617,8 +759,19 @@ export default function PlatformAccounts() {
                         <div className="text-xs text-gray-300">
                           {account.paymentMethod === 'crypto' ? (
                             <>
-                              <p className="font-mono">{String(account.walletAddress ?? '').slice(0, 20)}…</p>
-                              <p style={{ color: '#6b7280' }}>{account.network}</p>
+                              <p className="font-semibold" style={{ color: '#f59e0b' }}>
+                                {account.coinSymbol ? `${account.coinSymbol} · ` : ''}{account.network}
+                              </p>
+                              <p className="font-mono" style={{ color: '#6b7280' }}>
+                                {String(account.walletAddress ?? '').slice(0, 18)}…
+                              </p>
+                            </>
+                          ) : account.paymentMethod === 'wire_transfer' ? (
+                            <>
+                              <p>{account.bankName}</p>
+                              <p style={{ color: '#6b7280' }}>
+                                {account.iban ? `IBAN ****${account.iban.slice(-4)}` : `****${String(account.accountNumber ?? '').slice(-4)}`}
+                              </p>
                             </>
                           ) : (
                             <>
