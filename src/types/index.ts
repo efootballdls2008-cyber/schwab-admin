@@ -79,6 +79,7 @@ export interface PlatformAccount {
   id: number
   accountName: string
   paymentMethod: PaymentMethod
+  // Bank / Wire Transfer
   bankName: string
   accountNumber: string
   routingNumber: string
@@ -86,8 +87,17 @@ export interface PlatformAccount {
   swiftCode: string
   bankAddress: string
   myAddress: string
+  homeAddress: string
+  // Wire Transfer extras
+  iban: string
+  sortCode: string
+  currencyAccepted: string
+  // Crypto
+  coinSymbol: string
   walletAddress: string
   network: string
+  qrCodeImage: string | null
+  // Meta
   isDefault: boolean
   assignedTo: AssignedTo
   status: 'active' | 'inactive'

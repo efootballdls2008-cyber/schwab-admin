@@ -5,7 +5,7 @@ import AdminLayout from '../components/layout/AdminLayout'
 import { getAllUsers, suspendUser, activateUser, deleteUser } from '../services/userService'
 import type { AdminUser } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmt = (n: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n)
 
 function DeleteConfirmModal({ user, onConfirm, onCancel, loading }: {
   user: AdminUser
@@ -162,16 +162,16 @@ export default function Users() {
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr style={{ background: '#1a1040', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  {['User', 'Email', 'Role', 'Balance', 'KYC', 'Status', 'Actions'].map(h => (
+                  {['User', 'Email', 'Role', 'Balance', 'Currency', 'KYC', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: '#6b7280' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} className="py-16 text-center text-gray-500"><i className="fas fa-spinner fa-spin mr-2" />Loading…</td></tr>
+                  <tr><td colSpan={8} className="py-16 text-center text-gray-500"><i className="fas fa-spinner fa-spin mr-2" />Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="py-16 text-center text-gray-500">No users found.</td></tr>
+                  <tr><td colSpan={8} className="py-16 text-center text-gray-500">No users found.</td></tr>
                 ) : filtered.map((u, i) => {
                   const isSuspended = u.accountStatus === 'suspended'
                   const initials = `${u.firstName[0]}${u.lastName[0]}`.toUpperCase()
@@ -190,7 +190,15 @@ export default function Users() {
                       <td className="px-4 py-3.5">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: u.role === 'Admin' ? 'rgba(201,168,76,0.12)' : 'rgba(96,165,250,0.12)', color: u.role === 'Admin' ? '#c9a84c' : '#60a5fa' }}>{u.role}</span>
                       </td>
-                      <td className="px-4 py-3.5 text-sm font-bold text-white">{fmt(u.balance)}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold text-white">{fmt(u.balance, u.currency || 'USD')}</td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                          style={{ background: 'rgba(162,133,57,0.12)', color: '#c9a84c', border: '1px solid rgba(162,133,57,0.25)' }}
+                        >
+                          {u.currency || 'USD'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3.5">
                         <span className="text-xs font-semibold" style={{ color: u.kycVerified ? '#4ade80' : '#f87171' }}>
                           <i className={`fas ${u.kycVerified ? 'fa-check-circle' : 'fa-times-circle'} mr-1`} />

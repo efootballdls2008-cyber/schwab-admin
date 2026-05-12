@@ -27,5 +27,5 @@ export async function deleteNotification(id: number): Promise<void> {
 }
 
 export async function deleteAllNotifications(): Promise<void> {
-  await del<unknown>(API.adminNotifications)
+  await del<unknown>(API.adminNotifications, { confirm: true })
 }
