@@ -5,7 +5,15 @@ import { getAllPurchases, approvePurchase, rejectPurchase } from '../services/pu
 import { getAllUsers } from '../services/userService'
 import type { Purchase, AdminUser } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+function fmtCurrency(n: number, currency = 'USD') {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
+const fmtUser = (n: number, user?: AdminUser) => fmtCurrency(n, user?.currency ?? 'USD')
 type FilterKey = 'all' | 'pending' | 'completed' | 'cancelled'
 
 function StatusBadge({ status }: { status: Purchase['status'] }) {
@@ -28,6 +36,7 @@ function OrderModal({ purchase, user, onApprove, onReject, onClose, loading }: {
   const accentBg = isCrypto ? 'rgba(245,158,11,0.12)' : 'rgba(96,165,250,0.12)'
   const accentBorder = isCrypto ? 'rgba(245,158,11,0.3)' : 'rgba(96,165,250,0.3)'
   const canAfford = user ? user.balance >= purchase.totalCost : false
+  const fmt = (n: number) => fmtUser(n, user)
 
   return (
     <AnimatePresence>
@@ -238,7 +247,7 @@ export default function Orders() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-xs font-semibold text-white">{p.quantity}</td>
-                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: isCrypto ? '#f59e0b' : '#60a5fa' }}>{fmt(p.totalCost)}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: isCrypto ? '#f59e0b' : '#60a5fa' }}>{fmtUser(p.totalCost, users.find(u => u.id === p.userId))}</td>
                       <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">{p.date} {p.time}</td>
                       <td className="px-4 py-3.5"><StatusBadge status={p.status} /></td>
                       <td className="px-4 py-3.5">

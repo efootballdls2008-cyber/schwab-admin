@@ -6,7 +6,18 @@ import { getAllUsers } from '../services/userService'
 import { getPlatformAccounts } from '../services/platformService'
 import type { Deposit, AdminUser, PlatformAccount } from '../types'
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+// Use the user's stored currency code; fall back to USD if unknown
+function fmtCurrency(n: number, currency = 'USD') {
+  const code = /^[A-Z]{3}$/.test(currency) ? currency : 'USD'
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  }
+}
+
+// Convenience: format using a user object (falls back to USD if user is undefined)
+const fmtUser = (n: number, user?: AdminUser) => fmtCurrency(n, user?.currency ?? 'USD')
 
 type FilterKey = 'all' | 'pending' | 'completed' | 'rejected'
 
@@ -84,6 +95,7 @@ function DetailModal({ deposit, user, platformAccount, onApprove, onReject, onCl
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const [lightbox, setLightbox] = useState(false)
+  const fmt = (n: number) => fmtUser(n, user)
 
   const isPending = deposit.status === 'pending'
 
@@ -330,7 +342,7 @@ export default function Deposits() {
     setActionLoading(true)
     try {
       await approveDeposit(selected)
-      showToast(`Deposit ${selected.txId} approved. ${fmt(selected.amount)} credited.`, 'success')
+      showToast(`Deposit ${selected.txId} approved. ${fmtUser(selected.amount, users.find(u => u.id === selected.userId))} credited.`, 'success')
       setSelected(null)
       await load()
     } catch (e) { showToast(e instanceof Error ? e.message : 'Failed to approve', 'error') }
@@ -442,7 +454,7 @@ export default function Deposits() {
                         <p className="text-xs font-semibold text-white">{user ? `${user.firstName} ${user.lastName}` : `User #${d.userId}`}</p>
                         <p className="text-xs" style={{ color: '#6b7280' }}>{user?.email}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: '#4ade80' }}>{fmt(d.amount)}</td>
+                      <td className="px-4 py-3.5 text-sm font-bold" style={{ color: '#4ade80' }}>{fmtUser(d.amount, users.find(u => u.id === d.userId))}</td>
                       <td className="px-4 py-3.5 text-xs text-white">{d.method}</td>
                       <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">{d.date} {d.time}</td>
                       <td className="px-4 py-3.5">
