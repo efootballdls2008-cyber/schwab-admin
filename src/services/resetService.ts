@@ -60,6 +60,10 @@ export async function resetAllData(): Promise<void> {
     del(API.botTrades,     { confirm: true }),
     del(API.tradeHistory,  { confirm: true }),
     del(API.notifications, { confirm: true }),
+    del(API.orders,        { confirm: true }),
+    del(API.wallets,       { confirm: true }),
+    del(API.botSettings,   { confirm: true }),
+    del(API.adminNotifications, { confirm: true }),
     del(API.adminActions,  { confirm: true }),
     del(API.profitOverview, { confirm: true }),
   ])
