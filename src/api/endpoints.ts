@@ -23,10 +23,13 @@ export const API = {
   botTradeAdminForceClose: (id: string) => `/botTrades/admin/${id}/force-close`,
   tradeHistory: '/tradeHistory',
   tradeHistoryItem: (id: string | number) => `/tradeHistory/${id}`,
+  orders: '/orders',
+  order: (id: number) => `/orders/${id}`,
   wallets: '/wallets',
   wallet: (id: number) => `/wallets/${id}`,
   profitOverview: '/profitOverview',
   profitOverviewItem: (id: string | number) => `/profitOverview/${id}`,
+  botSettings: '/botSettings',
   // Admin notifications
   adminNotifications: '/adminNotifications',
   adminNotification: (id: number) => `/adminNotifications/${id}`,

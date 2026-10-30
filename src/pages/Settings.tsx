@@ -522,14 +522,14 @@ export default function Settings() {
                 value={settings.maxLoginAttempts}
                 onChange={v => update('maxLoginAttempts', v)}
                 min={1} max={20}
-                hint="Account locked after this many failed attempts"
+                hint="Account locked after this many failed logins (enforced on next login)"
               />
               <NumField
                 label="Session Timeout (minutes)"
                 value={settings.sessionTimeoutMinutes}
                 onChange={v => update('sessionTimeoutMinutes', v)}
                 min={5} max={1440}
-                hint="Idle sessions expire after this duration"
+                hint="JWT session length for new logins after save"
               />
             </div>
           </Card>
@@ -541,7 +541,7 @@ export default function Settings() {
               {[
                 { icon: 'fa-shield-halved', color: '#4ade80', text: 'All admin actions are logged with timestamps and IP addresses.' },
                 { icon: 'fa-key',           color: '#c9a84c', text: 'Passwords are hashed using bcrypt with a minimum cost factor of 12.' },
-                { icon: 'fa-clock',         color: '#60a5fa', text: 'Sessions are invalidated server-side on logout or timeout.' },
+                { icon: 'fa-clock',         color: '#60a5fa', text: 'Session timeout sets JWT expiry for new logins (users must log in again to apply).' },
                 { icon: 'fa-ban',           color: '#f87171', text: 'Locked accounts must be manually unlocked by an admin.' },
               ].map(n => (
                 <div key={n.text} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
