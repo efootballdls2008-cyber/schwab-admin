@@ -11,7 +11,8 @@ export async function getAllUsersWithPasswords(): Promise<AdminUser[]> {
 }
 
 export async function resetUserPassword(userId: number, newPassword: string): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/auth/admin-reset-password`, {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002'
+  const response = await fetch(`${apiUrl}/auth/admin-reset-password`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -19,6 +20,10 @@ export async function resetUserPassword(userId: number, newPassword: string): Pr
     },
     body: JSON.stringify({ userId, newPassword }),
   })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'Failed to reset password')
+  }
   return response.json()
 }
 
