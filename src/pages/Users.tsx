@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import AdminLayout from '../components/layout/AdminLayout'
-import { getAllUsers, suspendUser, activateUser, deleteUser } from '../services/userService'
+import { getAllUsers, getAllUsersWithPasswords, suspendUser, activateUser, deleteUser, resetUserPassword } from '../services/userService'
 import type { AdminUser } from '../types'
 
 const fmt = (n: number, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n)
@@ -66,6 +66,91 @@ function DeleteConfirmModal({ user, onConfirm, onCancel, loading }: {
   )
 }
 
+function ResetPasswordModal({ user, password, setPassword, onConfirm, onCancel, loading }: {
+  user: AdminUser
+  password: string
+  setPassword: (pwd: string) => void
+  onConfirm: () => void
+  onCancel: () => void
+  loading: boolean
+}) {
+  const [showPw, setShowPw] = useState(false)
+  
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onCancel}
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+    >
+      <motion.div
+        className="w-full max-w-md rounded-2xl overflow-hidden"
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'linear-gradient(145deg, #130d35, #1a1040)', border: '1px solid rgba(255,255,255,0.1)' }}
+      >
+        <div className="h-0.5" style={{ background: 'linear-gradient(90deg, transparent, #c9a84c, transparent)' }} />
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)' }}>
+              <i className="fas fa-key text-sm" style={{ color: '#c9a84c' }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Reset Password</h3>
+              <p className="text-xs" style={{ color: '#6b7280' }}>Set new password for {user.firstName} {user.lastName}</p>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#9ca3af' }}>New Password</label>
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="w-full px-3 pr-10 py-2.5 rounded-xl text-sm text-white outline-none transition-all"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPw(p => !p)} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                <i className={`fas ${showPw ? 'fa-eye-slash' : 'fa-eye'} text-xs`} />
+              </button>
+            </div>
+            <p className="text-xs mt-1.5" style={{ color: '#6b7280' }}>
+              At least 8 characters with uppercase, lowercase, and number
+            </p>
+          </div>
+          
+          <div className="flex gap-3 pt-1">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-white/10"
+              style={{ background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading || !password}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, #a28539, #c9a84c)', color: '#0d0824' }}
+            >
+              {loading ? <i className="fas fa-spinner fa-spin" /> : 'Reset Password'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export default function Users() {
   const navigate = useNavigate()
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -74,17 +159,41 @@ export default function Users() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showPasswords, setShowPasswords] = useState(false)
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
 
   const showToast = (msg: string, type: 'success' | 'error') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { setUsers(await getAllUsers()) }
+    try { 
+      // Load users with or without passwords based on toggle state
+      const userData = showPasswords ? await getAllUsersWithPasswords() : await getAllUsers()
+      setUsers(userData)
+    }
     catch { showToast('Failed to load users', 'error') }
     finally { setLoading(false) }
-  }, [])
+  }, [showPasswords])
 
   useEffect(() => { load() }, [load])
+
+  // Keyboard shortcut: Ctrl+Shift+M to toggle password display
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+        e.preventDefault()
+        setShowPasswords(prev => {
+          const newState = !prev
+          showToast(newState ? '⚠️ Password column visible' : 'Password column hidden', newState ? 'error' : 'success')
+          return newState
+        })
+      }
+    }
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [])
 
   const filtered = users.filter(u => {
     if (!search) return true
@@ -117,6 +226,30 @@ export default function Users() {
     finally { setDeleteLoading(false) }
   }
 
+  async function handleResetPassword() {
+    if (!resetTarget || !resetPassword) return
+    
+    // Validate password
+    if (resetPassword.length < 8) {
+      showToast('Password must be at least 8 characters', 'error')
+      return
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(resetPassword)) {
+      showToast('Password must contain uppercase, lowercase, and number', 'error')
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      await resetUserPassword(resetTarget.id, resetPassword)
+      showToast(`Password reset for ${resetTarget.firstName} ${resetTarget.lastName}`, 'success')
+      setResetTarget(null)
+      setResetPassword('')
+      await load()
+    } catch { showToast('Failed to reset password', 'error') }
+    finally { setResetLoading(false) }
+  }
+
   return (
     <AdminLayout title="Users" subtitle="Manage all registered users">
       <AnimatePresence>
@@ -131,6 +264,16 @@ export default function Users() {
             onConfirm={handleDelete}
             onCancel={() => setDeleteTarget(null)}
             loading={deleteLoading}
+          />
+        )}
+        {resetTarget && (
+          <ResetPasswordModal
+            user={resetTarget}
+            password={resetPassword}
+            setPassword={setResetPassword}
+            onConfirm={handleResetPassword}
+            onCancel={() => { setResetTarget(null); setResetPassword('') }}
+            loading={resetLoading}
           />
         )}
       </AnimatePresence>
@@ -162,16 +305,16 @@ export default function Users() {
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr style={{ background: '#1a1040', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  {['User', 'Email', 'Role', 'Balance', 'Currency', 'KYC', 'Status', 'Actions'].map(h => (
+                  {['User', 'Email', 'Role', 'Balance', 'Currency', showPasswords && 'Password', 'KYC', 'Status', 'Actions'].filter(Boolean).map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: '#6b7280' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="py-16 text-center text-gray-500"><i className="fas fa-spinner fa-spin mr-2" />Loading…</td></tr>
+                  <tr><td colSpan={showPasswords ? 9 : 8} className="py-16 text-center text-gray-500"><i className="fas fa-spinner fa-spin mr-2" />Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="py-16 text-center text-gray-500">No users found.</td></tr>
+                  <tr><td colSpan={showPasswords ? 9 : 8} className="py-16 text-center text-gray-500">No users found.</td></tr>
                 ) : filtered.map((u, i) => {
                   const isSuspended = u.accountStatus === 'suspended'
                   const initials = `${u.firstName[0]}${u.lastName[0]}`.toUpperCase()
@@ -199,6 +342,28 @@ export default function Users() {
                           {u.currency || 'USD'}
                         </span>
                       </td>
+                      {showPasswords && (
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-gray-300 bg-black/20 px-2 py-1 rounded">
+                              {u.plainPassword || '••••••••'}
+                            </span>
+                            {!u.plainPassword && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setResetTarget(u)
+                                }}
+                                className="px-2 py-1 rounded text-xs"
+                                style={{ background: 'rgba(201,168,76,0.12)', color: '#c9a84c' }}
+                                title="Reset password"
+                              >
+                                <i className="fas fa-key text-xs" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-4 py-3.5">
                         <span className="text-xs font-semibold" style={{ color: u.kycVerified ? '#4ade80' : '#f87171' }}>
                           <i className={`fas ${u.kycVerified ? 'fa-check-circle' : 'fa-times-circle'} mr-1`} />
@@ -212,10 +377,13 @@ export default function Users() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => navigate(`/admin/users/${u.id}`)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.25)' }}>
+                          <button onClick={() => navigate(`/admin/users/${u.id}`)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.25)' }} title="View details">
                             <i className="fas fa-eye text-xs" />
                           </button>
-                          <button onClick={() => handleToggleStatus(u)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: isSuspended ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)', color: isSuspended ? '#4ade80' : '#f87171', border: `1px solid ${isSuspended ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}` }}>
+                          <button onClick={() => { setResetTarget(u) }} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(201,168,76,0.12)', color: '#c9a84c', border: '1px solid rgba(201,168,76,0.25)' }} title="Reset password">
+                            <i className="fas fa-key text-xs" />
+                          </button>
+                          <button onClick={() => handleToggleStatus(u)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: isSuspended ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)', color: isSuspended ? '#4ade80' : '#f87171', border: `1px solid ${isSuspended ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}` }} title={isSuspended ? 'Activate' : 'Suspend'}>
                             <i className={`fas ${isSuspended ? 'fa-unlock' : 'fa-ban'} text-xs`} />
                           </button>
                           <button onClick={() => setDeleteTarget(u)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }} title="Delete user">

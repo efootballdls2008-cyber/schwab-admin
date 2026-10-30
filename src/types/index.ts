@@ -25,6 +25,7 @@ export interface AdminUser {
   withdrawSwiftCode?: string
   kycVerified?: boolean
   accountStatus?: 'active' | 'suspended' | 'banned'
+  plainPassword?: string | null  // ⚠️ Only populated when admin views passwords
 }
 
 export interface Deposit {
