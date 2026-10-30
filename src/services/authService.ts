@@ -18,13 +18,26 @@ interface LoginResponse {
 export async function adminLogin(email: string, password: string): Promise<AdminUser | null> {
   try {
     const response = await post<LoginResponse>('/auth/login', { email, password })
+    
+    console.log('[Admin Login] Response:', response)
+    console.log('[Admin Login] User role:', response?.user?.role)
 
-    if (!response.success || !response.token) return null
+    if (!response.success || !response.token) {
+      console.log('[Admin Login] Failed: no success or token')
+      return null
+    }
 
     // Only allow Admin role
-    if (response.user.role !== 'Admin') return null
+    if (response.user.role !== 'Admin') {
+      console.log('[Admin Login] Failed: role is not Admin, got:', response.user.role)
+      return null
+    }
 
-    localStorage.setItem('admin_token', response.token)
+    // Store in sessionStorage — tab-scoped, cleared on close, not shared across tabs.
+    // See client.ts TOKEN_KEY comment for the full security rationale.
+    sessionStorage.setItem('admin_token', response.token)
+
+    console.log('[Admin Login] Success! Token stored')
 
     return {
       id: response.user.id,
@@ -36,7 +49,8 @@ export async function adminLogin(email: string, password: string): Promise<Admin
       balance: 0,
       currency: 'USD',
     }
-  } catch {
+  } catch (error) {
+    console.error('[Admin Login] Error:', error)
     return null
   }
 }

@@ -99,7 +99,7 @@ export default function UserDetail() {
     } catch { showToast('Failed', 'error') }
   }
 
-  async function handleUpdateBotProfit(tradeId: number, newProfit: number, newDuration: number) {
+  async function handleUpdateBotProfit(tradeId: string, newProfit: number, newDuration: number) {
     try {
       await updateBotTradeProfit(tradeId, newProfit, newDuration)
       showToast('Bot trade updated', 'success')
@@ -107,7 +107,7 @@ export default function UserDetail() {
     } catch { showToast('Failed to update bot trade', 'error') }
   }
 
-  async function handleCloseBotTrade(tradeId: number) {
+  async function handleCloseBotTrade(tradeId: string) {
     try {
       await closeBotTrade(tradeId)
       showToast('Bot trade closed', 'success')
@@ -404,7 +404,7 @@ export default function UserDetail() {
                               const newProfit = prompt('New expected profit:', (trade.expectedProfit || 0).toString())
                               const newDuration = prompt('New duration (seconds):', (trade.tradeDurationSeconds || 0).toString())
                               if (newProfit && newDuration) {
-                                handleUpdateBotProfit(parseInt(trade.id), parseFloat(newProfit), parseInt(newDuration))
+                                handleUpdateBotProfit(trade.id, parseFloat(newProfit), parseInt(newDuration))
                               }
                             }}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold" 
@@ -413,7 +413,7 @@ export default function UserDetail() {
                             <i className="fas fa-edit mr-1" />Edit
                           </button>
                           <button 
-                            onClick={() => handleCloseBotTrade(parseInt(trade.id))}
+                            onClick={() => handleCloseBotTrade(trade.id)}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold" 
                             style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)' }}
                           >

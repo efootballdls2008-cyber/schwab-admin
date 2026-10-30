@@ -315,7 +315,10 @@ export default function Deposits() {
     setLoading(true)
     try {
       const [d, u, pa] = await Promise.all([getAllDeposits(), getAllUsers(), getPlatformAccounts()])
-      setDeposits(d.filter(x => x.type === 'deposit').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()))
+      // Backend returns deposits ORDER BY created_at DESC — trust that order.
+      // Sorting client-side by d.date (a user-supplied string) is unreliable:
+      // the field can be null, malformed, or set to an arbitrary value by the user.
+      setDeposits(d.filter(x => x.type === 'deposit'))
       setUsers(u)
       setPlatformAccount(pa.find(a => a.isDefault && a.status === 'active') ?? null)
     } catch { showToast('Failed to load data', 'error') }
