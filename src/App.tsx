@@ -14,6 +14,7 @@ import BotTrades from './pages/BotTrades'
 import PlatformAccounts from './pages/PlatformAccounts'
 import Settings from './pages/Settings'
 import Notifications from './pages/Notifications'
+import SupportTickets from './pages/SupportTickets'
 
 function Guard({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAdmin()
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Route path="/admin/accounts" element={<Guard><PlatformAccounts /></Guard>} />
       <Route path="/admin/settings" element={<Guard><Settings /></Guard>} />
       <Route path="/admin/notifications" element={<Guard><Notifications /></Guard>} />
+      <Route path="/admin/support" element={<Guard><SupportTickets /></Guard>} />
       <Route path="*" element={<Navigate to="/admin/login" replace />} />
     </Routes>
   )
