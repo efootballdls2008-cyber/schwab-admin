@@ -64,6 +64,7 @@ export default function SupportTickets() {
       setTickets(data.tickets)
     } catch (err) {
       console.error('Failed to fetch tickets:', err)
+      alert(`Failed to load support tickets: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -75,6 +76,7 @@ export default function SupportTickets() {
       setStats(data.stats)
     } catch (err) {
       console.error('Failed to fetch stats:', err)
+      // Don't alert for stats failure, it's non-critical
     }
   }
 
