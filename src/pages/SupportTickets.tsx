@@ -157,7 +157,7 @@ export default function SupportTickets() {
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Support Tickets" subtitle="Manage customer support requests and inquiries">
       <div className="p-6 min-h-screen" style={{ background: 'linear-gradient(135deg, #0d0824 0%, #1a0f3e 100%)' }}>
       {/* Header */}
       <div className="mb-8">
