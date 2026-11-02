@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import AdminLayout from '../components/layout/AdminLayout'
 import { get, patch, del } from '../api/client'
 
 interface SupportTicket {
@@ -156,7 +157,8 @@ export default function SupportTickets() {
   }
 
   return (
-    <div className="p-6 min-h-screen" style={{ background: 'linear-gradient(135deg, #0d0824 0%, #1a0f3e 100%)' }}>
+    <AdminLayout>
+      <div className="p-6 min-h-screen" style={{ background: 'linear-gradient(135deg, #0d0824 0%, #1a0f3e 100%)' }}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -510,5 +512,6 @@ export default function SupportTickets() {
         </div>
       )}
     </div>
+    </AdminLayout>
   )
 }
