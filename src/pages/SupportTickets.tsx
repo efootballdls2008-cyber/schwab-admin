@@ -58,12 +58,16 @@ export default function SupportTickets() {
       if (priorityFilter) params.append('priority', priorityFilter)
       if (searchTerm) params.append('search', searchTerm)
       
+      console.log('[SupportTickets] Fetching tickets from:', `/support/admin?${params.toString()}`)
+      
       const data = await get<{ success: boolean; tickets: SupportTicket[] }>(
         `/support/admin?${params.toString()}`
       )
+      
+      console.log('[SupportTickets] Received data:', data)
       setTickets(data.tickets)
     } catch (err) {
-      console.error('Failed to fetch tickets:', err)
+      console.error('[SupportTickets] Failed to fetch tickets:', err)
       alert(`Failed to load support tickets: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)

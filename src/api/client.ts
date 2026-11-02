@@ -55,21 +55,35 @@ const inFlightGets = new Map<string, Promise<unknown>>()
 /**
  * Retry once after a short delay when the server returns 429.
  * Reads the Retry-After header if present, otherwise waits 2 seconds.
+ * Includes a 30-second timeout to prevent hanging forever.
  */
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
 ): Promise<Response> {
-  const res = await fetch(url, options)
+  // Add timeout controller
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+  
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal })
 
-  if (res.status === 429) {
-    const retryAfter = res.headers.get('Retry-After')
-    const waitMs = retryAfter ? parseFloat(retryAfter) * 1000 : 2000
-    await new Promise((r) => setTimeout(r, waitMs))
-    return fetch(url, options)
+    if (res.status === 429) {
+      const retryAfter = res.headers.get('Retry-After')
+      const waitMs = retryAfter ? parseFloat(retryAfter) * 1000 : 2000
+      await new Promise((r) => setTimeout(r, waitMs))
+      return fetch(url, { ...options, signal: controller.signal })
+    }
+
+    return res
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`Request timeout: ${url}`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return res
 }
 
 export async function get<T>(path: string): Promise<T> {
